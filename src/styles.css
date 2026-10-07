@@ -797,6 +797,13 @@ main {
   background: var(--red);
   color: var(--paper);
 }
+.btn-danger-solid {
+  background: var(--red);
+  color: var(--paper);
+}
+.btn-danger-solid:hover:not(:disabled) {
+  background: var(--ink);
+}
 .btn-sm {
   height: var(--h-sm);
   padding: 0 14px;
@@ -1001,6 +1008,48 @@ input[type='radio']:checked::after {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   vertical-align: 2px;
+}
+
+/* Super admin testing reset */
+.danger-zone {
+  box-shadow: 5px 5px 0 var(--red);
+}
+.danger-zone .card-title h2 {
+  color: var(--red);
+}
+.danger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding-top: 16px;
+  border-top: 1.5px solid var(--grey-2);
+}
+.danger-row .btn {
+  flex: none;
+  min-width: 190px;
+}
+@media (max-width: 600px) {
+  .danger-row {
+    flex-wrap: wrap;
+  }
+  .danger-row .btn {
+    flex: 1 1 100%;
+  }
+}
+.reset-head {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.reset-list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.reset-list li + li {
+  margin-top: 2px;
 }
 
 /* Staff enrollment: family account picker */

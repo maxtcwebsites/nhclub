@@ -10,6 +10,7 @@ import { weekdayNames } from '../../lib/dates.js';
 import { friendlyError } from '../../lib/errors.js';
 import { ErrorAlert, Field, Spinner } from '../../components/ui.jsx';
 import { CLUB_NAME } from '../../config.js';
+import ResetData from './ResetData.jsx';
 
 // Club day numbers in Monday-first order (0 = Sunday).
 const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0];
@@ -26,7 +27,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (loaded && !form) setForm({ ...settings, fee: centsToInput(settings.monthlyFeeCents) || '0' });
-  }, [loaded, settings]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded, settings, form]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!form) return <Spinner />;
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -140,6 +141,11 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <div className="section">
+        {/* After a full reset the settings are back to the defaults. */}
+        <ResetData onDone={(scope) => scope === 'everything' && setForm(null)} />
+      </div>
     </div>
   );
 }

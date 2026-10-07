@@ -27,10 +27,12 @@ import {
 } from 'firebase/firestore';
 import {
   clearAttendance,
+  countResetData,
   createStudent,
   ensureUserProfile,
   recordCorrection,
   recordPayment,
+  resetClubData,
   saveSettings,
   setAttendance,
   setStudentStatus,
@@ -231,9 +233,11 @@ describe('users', () => {
     await assertFails(setUserRole(adminDb(), ADMIN, target, 'admin'));
   });
 
-  it('does not let anyone delete a profile', async () => {
+  it('only the super admin can delete a profile, and never their own', async () => {
     await assertFails(deleteDoc(doc(parentDb(), `users/${PARENT.uid}`)));
-    await assertFails(deleteDoc(doc(adminDb(), `users/${PARENT.uid}`)));
+    await assertFails(deleteDoc(doc(teacherDb(), `users/${PARENT.uid}`)));
+    await seed(`users/${ADMIN.uid}`, userDoc(ADMIN, 'parent'));
+    await assertFails(deleteDoc(doc(adminDb(), `users/${ADMIN.uid}`)));
   });
 
   it('a demoted teacher immediately loses staff access', async () => {
@@ -454,10 +458,10 @@ describe('students', () => {
     await assertFails(setStudentStatus(teacherDb(), TEACHER, { id, ...CHILD }, 'deleted'));
   });
 
-  it('nobody can delete a student', async () => {
+  it('parents and teachers cannot delete a student', async () => {
     const id = await newChild();
     await assertFails(deleteDoc(doc(parentDb(), `students/${id}`)));
-    await assertFails(deleteDoc(doc(adminDb(), `students/${id}`)));
+    await assertFails(deleteDoc(doc(teacherDb(), `students/${id}`)));
   });
 
   it('a teacher cannot change paid-until directly without a ledger entry', async () => {
@@ -605,12 +609,12 @@ describe('payments', () => {
     await assertFails(recordPaymentRaw(teacherDb(), TEACHER, id, { ...pay, months: 1, periodStart: '2027-01-01', periodEnd: '2026-12-01' }));
   });
 
-  it('ledger entries can never be edited or deleted, even by the super admin', async () => {
+  it('ledger entries can never be edited, and only the super admin can delete them', async () => {
     const id = await newChild();
     const paymentId = await recordPayment(teacherDb(), TEACHER, id, pay);
     await assertFails(updateDoc(doc(adminDb(), `payments/${paymentId}`), { amountCents: 1 }));
-    await assertFails(deleteDoc(doc(adminDb(), `payments/${paymentId}`)));
     await assertFails(deleteDoc(doc(teacherDb(), `payments/${paymentId}`)));
+    await assertFails(deleteDoc(doc(parentDb(), `payments/${paymentId}`)));
   });
 
   it('corrections need a reason and move paid-until to the chosen date', async () => {
@@ -851,11 +855,12 @@ describe('logs', () => {
     await assertFails(getDocs(collection(parentDb(), 'logs')));
   });
 
-  it('logs are append-only', async () => {
+  it('logs are append-only for everyone but the super admin\'s reset', async () => {
     await newChild();
     const [log] = await readAll('logs');
     await assertFails(updateDoc(doc(adminDb(), `logs/${log.id}`), { message: 'nothing happened' }));
-    await assertFails(deleteDoc(doc(adminDb(), `logs/${log.id}`)));
+    await assertFails(deleteDoc(doc(teacherDb(), `logs/${log.id}`)));
+    await assertFails(deleteDoc(doc(parentDb(), `logs/${log.id}`)));
   });
 
   it('a log cannot be forged in someone else\'s name or role', async () => {
@@ -925,6 +930,75 @@ describe('settings', () => {
     await seedSettings();
     await assertSucceeds(getDoc(doc(parentDb(), 'settings/club')));
     await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'settings/club')));
+  });
+});
+
+// ===========================================================================
+describe('testing reset (super admin only)', () => {
+  const pay = { amountCents: 10000, months: 1, method: 'cash', periodStart: '2026-10-01', note: '', currency: '$' };
+
+  async function seedClub() {
+    await seed(`users/${ADMIN.uid}`, userDoc(ADMIN, 'parent'));
+    await seedSettings();
+    const id = await newChild();
+    await recordPayment(teacherDb(), TEACHER, id, pay);
+    await setAttendance(teacherDb(), TEACHER, id, { date: '2026-10-05', status: 'present', note: 'ok', policy: 'charge' });
+    return id;
+  }
+
+  it('clear history: deletes payments, attendance and logs, students go back to never paid', async () => {
+    const id = await seedClub();
+    expect(await countResetData(adminDb())).toMatchObject({ payments: 1, attendance: 1, students: 1, users: 4 });
+    const progress = [];
+    await assertSucceeds(resetClubData(adminDb(), ADMIN, 'history', (done, total) => progress.push([done, total])));
+    expect(progress.at(-1)).toEqual([6, 6]); // 1 payment + 1 attendance + 3 logs + 1 student reset
+    for (const name of ['payments', 'attendance', 'logs']) expect(await readAll(name)).toHaveLength(0);
+    expect(await read(`students/${id}`)).toMatchObject({
+      ...CHILD, parentUid: PARENT.uid, status: 'active', paidUntil: null, totalPaidCents: 0, monthsPaid: 0, creditDays: 0, lastPaymentId: null, lastLogId: null,
+    });
+    expect(await readAll('users')).toHaveLength(4);
+    expect(await read('settings/club')).not.toBe(null);
+    // The club keeps working afterwards.
+    await assertSucceeds(recordPayment(teacherDb(), TEACHER, id, pay));
+    await assertSucceeds(updateStudentProfile(parentDb(), PARENT, { id, ...(await read(`students/${id}`)) }, { ...CHILD, grade: '3rd' }));
+  });
+
+  it('reset everything: only the super admin\'s own profile is left', async () => {
+    await seedClub();
+    await assertSucceeds(resetClubData(adminDb(), ADMIN, 'everything'));
+    for (const name of ['payments', 'attendance', 'logs', 'students']) expect(await readAll(name)).toHaveLength(0);
+    expect((await readAll('users')).map((u) => u.id)).toEqual([ADMIN.uid]);
+    expect(await read('settings/club')).toBe(null);
+  });
+
+  it('teachers, parents and unverified admins cannot reset', async () => {
+    const id = await seedClub();
+    await assertFails(resetClubData(teacherDb(), TEACHER, 'history'));
+    await assertFails(resetClubData(teacherDb(), TEACHER, 'everything'));
+    await assertFails(resetClubData(parentDb(), PARENT, 'history'));
+    await assertFails(resetClubData(ctx(ADMIN, { verified: false }), ADMIN, 'history'));
+    expect(await readAll('payments')).toHaveLength(1);
+    expect(await read(`students/${id}`)).toMatchObject({ totalPaidCents: 10000 });
+  });
+
+  it('a teacher cannot zero a student\'s billing the way the reset does', async () => {
+    const id = await seedClub();
+    await assertFails(
+      updateDoc(doc(teacherDb(), `students/${id}`), {
+        paidUntil: null, totalPaidCents: 0, monthsPaid: 0, creditDays: 0, lastPaymentAt: null,
+        lastPaymentId: null, lastAttendanceId: null, lastLogId: null, updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('the super admin\'s reset update cannot be used to mark a student paid', async () => {
+    const id = await seedClub();
+    await assertFails(
+      updateDoc(doc(adminDb(), `students/${id}`), {
+        paidUntil: '2030-01-01', totalPaidCents: 0, monthsPaid: 0, creditDays: 0, lastPaymentAt: null,
+        lastPaymentId: null, lastAttendanceId: null, lastLogId: null, updatedAt: serverTimestamp(),
+      }),
+    );
   });
 });
 

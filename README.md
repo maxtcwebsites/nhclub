@@ -66,6 +66,7 @@ color, and the crest's red, blue and green for statuses. It's built with React +
 | Activity log for every student | ❌ | ✅ | ✅ |
 | Promote a parent account to teacher / remove it | ❌ | ❌ | ✅ |
 | Club settings (absence policy, fee, club days…) | ❌ | ❌ | ✅ |
+| Testing reset: clear history / reset everything | ❌ | ❌ | ✅ |
 
 **How someone becomes a teacher:** they create a normal parent account, then
 the super admin opens **Users** and presses **Make teacher**. The change takes
@@ -84,7 +85,8 @@ subscription. Credited days are shown to parents and recorded in the log.
   expired.
 * Status shown everywhere: **Paid**, **Expiring soon** (within N days, set in
   settings), **Expired**, **Not paid yet**, **Archived**.
-* Payments can never be edited or deleted. A mistake is fixed with a
+* Payments can never be edited, and only the super admin's testing reset can
+  delete them. A mistake is fixed with a
   **Correction**, which sets a new paid-until date and optionally an amount (it
   can be negative for a refund) and a month change, together with a reason. The
   original entry stays in the history.
@@ -205,8 +207,21 @@ redeploy.
   together with a *new* ledger entry in the same batch, and the rules check
   that the totals add up exactly. The entry must also record the previous
   values, which blocks stale or concurrent overwrites.
-* **Append-only payments and logs.** No one can edit or delete them from the
-  app, including the super admin.
+* **Append-only payments and logs.** No one can edit them. Teachers and
+  parents can never delete them; only the super admin's testing reset can.
+* **Testing reset (super admin only).** **Club → Zona de pruebas** has two
+  buttons, each behind a "type BORRAR to confirm" dialog:
+  * **Borrar historial** deletes every payment, all attendance and the activity
+    log, and puts every student back to "not paid yet". Students and accounts
+    stay.
+  * **Reiniciar todo** also deletes the students, every other account's
+    profile (teachers become families again when they next sign in) and the
+    club settings. The super admin's own profile stays. Sign-in accounts
+    themselves live in Firebase → Authentication and are deleted there.
+
+  Once the club is live you may want the history to be permanent again: every
+  rule that allows the reset has a "testing reset" comment in
+  `firestore.rules`; remove those permissions and republish.
 * **Every change is logged.** Every change to a student (registration, edits,
   payments, corrections, attendance, archiving) and every role or settings
   change must be committed together with a new audit-log entry whose author is
@@ -308,9 +323,9 @@ tests/rules.test.js      Security-rules test suite
 
 | Collection | Contents | Who can read | Who can write |
 |---|---|---|---|
-| `users/{uid}` | name, email, phone, role | the user and staff | the user (name and phone only); super admin (role only) |
-| `students/{id}` | child profile, `parentUid`, `paidUntil`, totals, `creditDays` | the parent and staff | parent (profile only); staff |
-| `payments/{id}` | append-only ledger: amount (cents), months, period, method, author | the parent and staff | staff (create only) |
+| `users/{uid}` | name, email, phone, role | the user and staff | the user (name and phone only); super admin (role only, delete for reset) |
+| `students/{id}` | child profile, `parentUid`, `paidUntil`, totals, `creditDays` | the parent and staff | parent (profile only); staff; super admin (reset) |
+| `payments/{id}` | append-only ledger: amount (cents), months, period, method, author | the parent and staff | staff (create only); super admin (delete for reset) |
 | `attendance/{studentId_date}` | present / absent / excused, note, `credited` | the parent and staff | staff |
-| `logs/{id}` | append-only audit trail | staff | created together with each change |
+| `logs/{id}` | append-only audit trail | staff | created together with each change; super admin (delete for reset) |
 | `settings/club` | currency, monthly fee, absence policy, club days | signed-in users | super admin |

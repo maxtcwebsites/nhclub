@@ -31,8 +31,11 @@ rules_version = '2';
 //  * Timestamps must be the server time (serverTimestamp()), so nobody can
 //    back-date or forge a record.
 //  * Money is stored in integer cents (no floating point drift).
-//  * The payment ledger and the audit log are APPEND-ONLY: no one can edit or
-//    delete a payment or a log entry from the app, not even the super admin.
+//  * The payment ledger and the audit log are APPEND-ONLY: no one can edit a
+//    payment or a log entry, and teachers and parents can never delete one.
+//  * Testing reset: ONLY the super admin can wipe data (Club -> Zona de pruebas):
+//    delete payments, attendance, logs, students, other users' profiles and
+//    the club settings, or reset a student's billing back to "never paid".
 //  * Every change to a student must be committed together with a brand new
 //    audit-log entry written in the same batch (checked with getAfter()).
 //  * A student's paid-until date and totals can only move through a new
@@ -174,7 +177,8 @@ service cloud.firestore {
       allow create, update: if isSuperAdmin()
         && settingsId == 'club'
         && validSettings();
-      allow delete: if false;
+      // Testing reset: back to the default settings.
+      allow delete: if isSuperAdmin() && settingsId == 'club';
     }
 
     // =====================================================================
@@ -239,7 +243,9 @@ service cloud.firestore {
       allow update: if signedIn()
         && request.resource.data.keys().hasOnly(allUserKeys())
         && (ownerUpdate() || superAdminRoleUpdate());
-      allow delete: if false;
+      // Testing reset only. The super admin keeps their own profile; anyone
+      // else who signs in again gets a fresh parent profile.
+      allow delete: if isSuperAdmin() && uid != request.auth.uid;
     }
 
     // =====================================================================
@@ -381,16 +387,37 @@ service cloud.firestore {
 
       allow create: if verified() && validCreate();
 
+      // Testing reset ("clear history"): the super admin puts a student back
+      // to "never paid" after deleting the payments, attendance and logs.
+      function superAdminReset() {
+        let d = request.resource.data;
+        return isSuperAdmin()
+          && d.diff(resource.data).affectedKeys().hasOnly(
+               ['paidUntil', 'totalPaidCents', 'monthsPaid', 'creditDays',
+                'lastPaymentAt', 'lastPaymentId', 'lastAttendanceId',
+                'lastLogId', 'updatedAt'])
+          && d.paidUntil == null
+          && d.totalPaidCents == 0
+          && d.monthsPaid == 0
+          && d.creditDays == 0
+          && d.lastPaymentAt == null
+          && d.lastPaymentId == null
+          && d.lastAttendanceId == null
+          && d.lastLogId == null;
+      }
+
       allow update: if verified()
         && request.resource.data.keys().hasOnly(profileKeys().concat(systemKeys()))
         && validProfile(request.resource.data)
         && request.resource.data.updatedAt == request.time
-        && request.resource.data.lastLogId != resource.data.lastLogId
-        && loggedChange(request.resource.data)
-        && (parentUpdate() || staffUpdate());
+        && (superAdminReset()
+            || (request.resource.data.lastLogId != resource.data.lastLogId
+                && loggedChange(request.resource.data)
+                && (parentUpdate() || staffUpdate())));
 
-      // Students are archived, never deleted (keeps the ledger consistent).
-      allow delete: if false;
+      // Staff archive students instead of deleting them (keeps the ledger
+      // consistent). Only the super admin's testing reset deletes them.
+      allow delete: if isSuperAdmin();
     }
 
     // =====================================================================
@@ -449,8 +476,10 @@ service cloud.firestore {
         && validEntry(request.resource.data,
                       get(studentPath(request.resource.data.studentId)).data);
 
-      // Immutable. Mistakes are fixed with a new 'correction' entry.
-      allow update, delete: if false;
+      // Immutable. Mistakes are fixed with a new 'correction' entry. Only the
+      // super admin's testing reset can delete entries.
+      allow update: if false;
+      allow delete: if isSuperAdmin();
     }
 
     // =====================================================================
@@ -508,10 +537,13 @@ service cloud.firestore {
                       get(studentPath(request.resource.data.studentId)).data,
                       getAfter(studentPath(request.resource.data.studentId)).data);
 
-      allow delete: if isStaff()
-        && validDelete(resource.data,
-                       get(studentPath(resource.data.studentId)).data,
-                       getAfter(studentPath(resource.data.studentId)).data);
+      // Staff clear a day together with its log entry; the super admin's
+      // testing reset can delete any record.
+      allow delete: if isSuperAdmin()
+        || (isStaff()
+            && validDelete(resource.data,
+                           get(studentPath(resource.data.studentId)).data,
+                           getAfter(studentPath(resource.data.studentId)).data));
     }
 
     // =====================================================================
@@ -567,8 +599,10 @@ service cloud.firestore {
 
       allow get, list: if isStaff();
       allow create: if verified() && isDocId(logId) && validLog();
-      // Nobody can rewrite history.
-      allow update, delete: if false;
+      // Nobody can rewrite history. Only the super admin's testing reset can
+      // delete entries.
+      allow update: if false;
+      allow delete: if isSuperAdmin();
     }
 
     // =====================================================================

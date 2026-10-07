@@ -7,6 +7,8 @@
 import {
   collection,
   doc,
+  getCountFromServer,
+  getDocs,
   runTransaction,
   serverTimestamp,
   writeBatch,
@@ -420,4 +422,64 @@ export async function clearAttendance(db, actor, studentId, date) {
     );
     return true;
   });
+}
+
+// ---------------------------------------------------------------------------
+// Testing reset (super admin only - enforced by the rules)
+// ---------------------------------------------------------------------------
+
+// 'history':    deletes payments, attendance and logs; every student goes
+//               back to "never paid". Students and accounts stay.
+// 'everything': also deletes the students, every other account's profile
+//               (teachers become plain families again when they next sign in)
+//               and the club settings. The super admin's own profile stays.
+export const RESET_SCOPES = ['history', 'everything'];
+const RESET_COLLECTIONS = ['payments', 'attendance', 'logs', 'students', 'users'];
+const RESET_BATCH_SIZE = 400; // Firestore allows 500 writes per batch
+
+export async function countResetData(db) {
+  const counts = await Promise.all(RESET_COLLECTIONS.map((name) => getCountFromServer(collection(db, name))));
+  return Object.fromEntries(RESET_COLLECTIONS.map((name, i) => [name, counts[i].data().count]));
+}
+
+// Not atomic across batches: if it stops halfway, running it again finishes
+// the job. onProgress(done, total) is called after every batch.
+export async function resetClubData(db, actor, scope, onProgress = () => {}) {
+  if (!RESET_SCOPES.includes(scope)) throw new Error(`Unknown reset scope: ${scope}`);
+  const everything = scope === 'everything';
+  const names = everything ? RESET_COLLECTIONS : RESET_COLLECTIONS.filter((n) => n !== 'users');
+  const snaps = await Promise.all(names.map((name) => getDocs(collection(db, name))));
+  const ops = [];
+  names.forEach((name, i) => {
+    snaps[i].docs.forEach((d) => {
+      if (name === 'users' && d.id === actor.uid) return;
+      if (name === 'students' && !everything) {
+        ops.push((batch) =>
+          batch.update(d.ref, {
+            paidUntil: null,
+            totalPaidCents: 0,
+            monthsPaid: 0,
+            creditDays: 0,
+            lastPaymentAt: null,
+            lastPaymentId: null,
+            lastAttendanceId: null,
+            lastLogId: null,
+            updatedAt: serverTimestamp(),
+          }),
+        );
+      } else {
+        ops.push((batch) => batch.delete(d.ref));
+      }
+    });
+  });
+  if (everything) ops.push((batch) => batch.delete(doc(db, 'settings', 'club')));
+
+  onProgress(0, ops.length);
+  for (let i = 0; i < ops.length; i += RESET_BATCH_SIZE) {
+    const batch = writeBatch(db);
+    ops.slice(i, i + RESET_BATCH_SIZE).forEach((op) => op(batch));
+    await batch.commit();
+    onProgress(Math.min(i + RESET_BATCH_SIZE, ops.length), ops.length);
+  }
+  return ops.length;
 }
