@@ -67,9 +67,14 @@ export default function StaffDashboard() {
           <h1>{t('staff.title')}</h1>
           <p className="muted">{t('staff.subtitle')}</p>
         </div>
-        <Link to="/staff/attendance" className="btn btn-primary">
-          {t('staff.takeAttendance')}
-        </Link>
+        <div className="row page-actions">
+          <Link to="/staff/attendance" className="btn">
+            {t('staff.takeAttendance')}
+          </Link>
+          <Link to="/staff/students/new" className="btn btn-primary">
+            {t('staff.enroll')}
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-4 stagger" style={{ marginBottom: 28 }}>

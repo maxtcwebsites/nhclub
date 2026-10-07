@@ -157,14 +157,17 @@ export async function saveSettings(db, actor, settings) {
 // Students
 // ---------------------------------------------------------------------------
 
-export async function createStudent(db, actor, input) {
+// Parents register their own children. Staff can enroll a child for another
+// family by passing that family's user profile.
+export async function createStudent(db, actor, input, family = null) {
   const profile = cleanProfile(input);
+  const parentUid = family?.uid ?? actor.uid;
   const batch = writeBatch(db);
   const studentRef = newRef(db, 'students');
   const logRef = newRef(db, 'logs');
   batch.set(studentRef, {
     ...profile,
-    parentUid: actor.uid,
+    parentUid,
     status: 'active',
     paidUntil: null,
     totalPaidCents: 0,
@@ -183,7 +186,10 @@ export async function createStudent(db, actor, input) {
     logEntry(actor, {
       type: 'student_created',
       studentId: studentRef.id,
-      message: tr('log.registered', { actor: actor.name, child: fullName(profile) }),
+      message:
+        parentUid === actor.uid
+          ? tr('log.registered', { actor: actor.name, child: fullName(profile) })
+          : tr('log.enrolled', { actor: actor.name, child: fullName(profile), family: family.displayName || family.email || parentUid }),
     }),
   );
   await batch.commit();

@@ -52,6 +52,7 @@ export default function App() {
                 <Route path="/family/:studentId/edit" element={<RequireAuth><ChildFormPage mode="edit" /></RequireAuth>} />
 
                 <Route path="/staff" element={<RequireStaff><StaffDashboard /></RequireStaff>} />
+                <Route path="/staff/students/new" element={<RequireStaff><ChildFormPage mode="create" staff /></RequireStaff>} />
                 <Route path="/staff/students/:studentId" element={<RequireStaff><StudentDetail /></RequireStaff>} />
                 <Route path="/staff/students/:studentId/edit" element={<RequireStaff><ChildFormPage mode="edit" staff /></RequireStaff>} />
                 <Route path="/staff/attendance" element={<RequireStaff><AttendancePage /></RequireStaff>} />

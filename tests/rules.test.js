@@ -298,6 +298,63 @@ describe('students', () => {
     await assertFails(createStudent(db, { ...PARENT, uid: OTHER.uid }, CHILD));
   });
 
+  it('lets staff enroll a child for an existing family account', async () => {
+    const family = userDoc(PARENT, 'parent');
+    const id = await assertSucceeds(createStudent(teacherDb(), TEACHER, CHILD, family));
+    const student = await read(`students/${id}`);
+    expect(student).toMatchObject({ parentUid: PARENT.uid, createdBy: TEACHER.uid, paidUntil: null, totalPaidCents: 0 });
+    const logs = await readAll('logs');
+    expect(logs[0]).toMatchObject({ type: 'student_created', studentId: id, actorRole: 'teacher' });
+    expect(logs[0].message).toContain(PARENT.name);
+    // The family sees the child in their account.
+    const mine = await getDocs(query(collection(parentDb(), 'students'), where('parentUid', '==', PARENT.uid)));
+    expect(mine.docs.map((d) => d.id)).toEqual([id]);
+
+    await assertSucceeds(createStudent(adminDb(), ADMIN, CHILD, userDoc(OTHER, 'parent')));
+  });
+
+  it('blocks staff from enrolling for an account that does not exist', async () => {
+    await assertFails(createStudent(teacherDb(), TEACHER, CHILD, { uid: 'ghostUid', displayName: 'Ghost' }));
+  });
+
+  it('blocks parents from enrolling a child into another family', async () => {
+    await assertFails(createStudent(parentDb(), PARENT, CHILD, userDoc(OTHER, 'parent')));
+  });
+
+  it('blocks staff from enrolling a child as already paid', async () => {
+    const db = teacherDb();
+    const batch = writeBatch(db);
+    const sRef = doc(collection(db, 'students'));
+    const lRef = doc(collection(db, 'logs'));
+    batch.set(sRef, {
+      ...CHILD,
+      parentUid: PARENT.uid,
+      status: 'active',
+      paidUntil: '2030-01-01',
+      totalPaidCents: 5000,
+      monthsPaid: 1,
+      creditDays: 0,
+      lastPaymentAt: null,
+      lastPaymentId: null,
+      lastAttendanceId: null,
+      lastLogId: lRef.id,
+      createdBy: TEACHER.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    batch.set(lRef, {
+      type: 'student_created',
+      studentId: sRef.id,
+      targetUid: null,
+      message: 'x',
+      actorUid: TEACHER.uid,
+      actorName: TEACHER.name,
+      actorRole: 'teacher',
+      createdAt: serverTimestamp(),
+    });
+    await assertFails(batch.commit());
+  });
+
   it('blocks a student write without the audit log entry', async () => {
     const db = parentDb();
     const sRef = doc(collection(db, 'students'));

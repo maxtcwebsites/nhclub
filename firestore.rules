@@ -10,8 +10,9 @@ rules_version = '2';
 //              children's profile details. Can READ their own children's
 //              payments and attendance. Can never touch payment data.
 //  * teacher - a parent account that the super admin promoted. Sees every
-//              student, records payments/corrections, takes attendance and
-//              reads the audit logs.
+//              student, enrolls students for existing family accounts,
+//              records payments/corrections, takes attendance and reads the
+//              audit logs.
 //  * super admin - the account whose VERIFIED email is r45t6er7@gmail.com.
 //              Everything a teacher can do, plus promoting/demoting teachers
 //              and changing the club settings.
@@ -280,14 +281,16 @@ service cloud.firestore {
           && getAfter(logPath(d.lastLogId)).data.studentId == studentId;
       }
 
-      // Only a parent can register a child, and only for themselves.
-      // All billing fields start empty - a parent can never mark anything paid.
+      // A parent can register a child for themselves; staff can enroll a
+      // child for any existing family account.
+      // All billing fields start empty - a new student is never already paid.
       function validCreate() {
         let d = request.resource.data;
         return d.keys().hasOnly(profileKeys().concat(systemKeys()))
           && d.keys().hasAll(profileKeys().concat(systemKeys()))
           && validProfile(d)
-          && d.parentUid == request.auth.uid
+          && (d.parentUid == request.auth.uid
+              || (isStaff() && isUid(d.parentUid) && exists(userPath(d.parentUid))))
           && d.createdBy == request.auth.uid
           && d.status == 'active'
           && d.paidUntil == null

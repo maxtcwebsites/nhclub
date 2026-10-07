@@ -57,6 +57,7 @@ color, and the crest's red, blue and green for statuses. It's built with React +
 |---|:-:|:-:|:-:|
 | Create an account (email/password or Google) | ✅ | ✅ (starts as a parent) | ✅ |
 | Register children, edit their details | ✅ own | ✅ all | ✅ all |
+| Enroll a student into any family account (**+ Inscribir estudiante** on the Panel) | ❌ | ✅ | ✅ |
 | See paid-until date, payment history, attendance | ✅ own | ✅ all | ✅ all |
 | Record payments (amount + number of months) | ❌ | ✅ | ✅ |
 | Corrections / refunds (with a required reason) | ❌ | ✅ | ✅ |

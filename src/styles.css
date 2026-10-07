@@ -426,6 +426,14 @@ main {
 .page-head p {
   margin: 10px 0 0;
 }
+@media (max-width: 600px) {
+  .page-actions {
+    width: 100%;
+  }
+  .page-actions .btn {
+    flex: 1 1 100%;
+  }
+}
 .eyebrow {
   display: inline-block;
   font-family: var(--mono);
@@ -993,6 +1001,83 @@ input[type='radio']:checked::after {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   vertical-align: 2px;
+}
+
+/* Staff enrollment: family account picker */
+.family-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.family-picker legend {
+  padding: 0;
+  margin-bottom: 7px;
+}
+.family-list {
+  border: var(--b);
+  max-height: 264px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--paper);
+}
+.family-list[aria-invalid='true'] {
+  box-shadow: 4px 4px 0 var(--red);
+}
+.field .family-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--h);
+  padding: 9px 12px;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  transition: background 0.12s;
+}
+.family-option + .family-option {
+  border-top: 1.5px solid var(--grey-2);
+}
+.family-option:hover {
+  background: var(--grey);
+}
+.family-option.on {
+  background: var(--orange-soft);
+  box-shadow: inset 6px 0 0 var(--orange);
+}
+.family-who {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+.family-who strong,
+.family-who .sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.family-who .sub {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.family-kids {
+  flex: none;
+  padding: 1px 6px;
+  border: 1.5px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.family-empty {
+  padding: 14px 12px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 .divider {
