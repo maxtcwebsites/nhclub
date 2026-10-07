@@ -136,6 +136,10 @@ export default {
     offline: 'You appear to be offline. Check your connection and try again.',
     notFound: 'That record no longer exists.',
     generic: 'Something went wrong. Please try again.',
+    accountDenied: 'Your account could not be loaded because the database refused access. Please tell the club.',
+    accountDeniedAdmin:
+      'Admin: the Firestore security rules are not published, or are not this project’s rules. Copy the whole firestore.rules file into Firebase → Firestore Database → Rules, press Publish and reload this page.',
+    reload: 'Reload',
     studentNotFound: 'Student not found.',
     invalidDate: 'Invalid date.',
     invalidStatus: 'Invalid status.',

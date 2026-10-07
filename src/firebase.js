@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
-import { connectAuthEmulator, getAuth } from 'firebase/auth';
+import { connectAuthEmulator, getAuth, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { ENABLE_ANALYTICS } from './config.js';
 
@@ -37,6 +37,9 @@ export const db = getFirestore(app);
 if (useEmulators) {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
   connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  // Emulator builds only: lets automated browser tests sign in "with Google"
+  // (the Auth emulator accepts a fake Google token).
+  window.__e2e = { auth, GoogleAuthProvider, signInWithCredential };
 }
 
 if (ENABLE_ANALYTICS && import.meta.env.PROD && !useEmulators) {

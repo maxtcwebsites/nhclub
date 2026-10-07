@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
+import { isSuperAdminUser, useAuth } from '../context/AuthContext.jsx';
 import { ErrorAlert, Spinner } from './ui.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 
@@ -14,10 +14,15 @@ export function RequireAuth({ children }) {
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (!emailVerified) return <Navigate to="/verify-email" replace />;
   if (profileError) {
+    const denied = profileError.code === 'permission-denied' || profileError.code === 'firestore/permission-denied';
     return (
       <div className="auth-wrap">
-        <div className="card auth-card">
-          <ErrorAlert error={profileError} />
+        <div className="card auth-card form">
+          <ErrorAlert error={denied ? t('errors.accountDenied') : profileError} />
+          {denied && isSuperAdminUser(user) && <div className="alert alert-info small">{t('errors.accountDeniedAdmin')}</div>}
+          <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+            {t('errors.reload')}
+          </button>
         </div>
       </div>
     );

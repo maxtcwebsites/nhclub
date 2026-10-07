@@ -136,6 +136,11 @@ export default {
     offline: 'Parece que no tienes conexión. Revísala y vuelve a probar.',
     notFound: 'Ese registro ya no existe.',
     generic: 'Algo salió mal. Vuelve a probar.',
+    accountDenied:
+      'No se pudo cargar tu cuenta porque la base de datos rechazó el acceso. Avisa al club.',
+    accountDeniedAdmin:
+      'Administrador: las reglas de seguridad de Firestore no están publicadas o no son las del proyecto. Copia todo el archivo firestore.rules en Firebase → Firestore Database → Reglas, pulsa Publicar y recarga esta página.',
+    reload: 'Recargar',
     studentNotFound: 'No se encontró al estudiante.',
     invalidDate: 'Fecha no válida.',
     invalidStatus: 'Estado no válido.',

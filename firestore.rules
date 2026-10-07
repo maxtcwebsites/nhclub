@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // =============================================================================
-//  Northhill Kids Club - Cloud Firestore security rules
+//  AClub (Northhill) - Cloud Firestore security rules
 // =============================================================================
 //
 //  Roles
