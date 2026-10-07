@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../firebase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { friendlyError } from '../../lib/errors.js';
 import { ErrorAlert, Field } from '../../components/ui.jsx';
 import Crest from '../../components/Crest.jsx';
@@ -10,6 +11,7 @@ import GoogleButton from './GoogleButton.jsx';
 
 export default function Login() {
   const { signOutReason, clearSignOutReason } = useAuth();
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -33,18 +35,20 @@ export default function Login() {
     <div className="auth-wrap">
       <div className="card auth-card">
         <Crest className="crest-img" label="" />
-        <div className="eyebrow">Welcome back</div>
-        <h1>Sign in</h1>
-        <p className="muted">Parents, teachers and directors all sign in here.</p>
-        {signOutReason && <div className="alert alert-info" style={{ marginBottom: '1rem' }}>{signOutReason}</div>}
+        <div className="eyebrow">{t('login.eyebrow')}</div>
+        <h1>{t('login.title')}</h1>
+        <p className="muted">{t('login.subtitle')}</p>
+        {signOutReason && (
+          <div className="alert alert-info" style={{ marginBottom: 16 }}>
+            {signOutReason}
+          </div>
+        )}
         <form className="form" onSubmit={submit} noValidate>
           <ErrorAlert error={error} />
-          <Field label="Email">
-            {(id) => (
-              <input id={id} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-            )}
+          <Field label={t('auth.email')}>
+            {(id) => <input id={id} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />}
           </Field>
-          <Field label="Password">
+          <Field label={t('auth.password')}>
             {(id) => (
               <input
                 id={id}
@@ -57,16 +61,16 @@ export default function Login() {
             )}
           </Field>
           <div className="row-between small">
-            <Link to="/forgot-password">Forgot your password?</Link>
+            <Link to="/forgot-password">{t('login.forgot')}</Link>
           </div>
           <button className="btn btn-primary btn-block btn-lg" disabled={busy || !email || !password}>
-            {busy ? 'Signing in…' : 'Sign in'}
+            {busy ? t('login.submitting') : t('login.submit')}
           </button>
-          <div className="divider">or</div>
+          <div className="divider">{t('auth.or')}</div>
           <GoogleButton onError={setError} />
         </form>
-        <p className="small muted" style={{ marginTop: '1.25rem', marginBottom: 0 }}>
-          New to the club? <Link to="/signup">Create a parent account</Link>
+        <p className="small muted" style={{ marginTop: 20, marginBottom: 0 }}>
+          {t('login.newHere')} <Link to="/signup">{t('login.createLink')}</Link>
         </p>
       </div>
     </div>

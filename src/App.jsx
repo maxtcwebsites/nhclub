@@ -1,9 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { SettingsProvider } from './context/SettingsContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
 import { IntroProvider } from './intro/IntroContext.jsx';
+import { I18nProvider } from './i18n/I18nContext.jsx';
 import Layout from './components/Layout.jsx';
 import { DashboardRedirect, PublicOnly, RequireAdmin, RequireAuth, RequireStaff } from './components/Guards.jsx';
 import { Spinner } from './components/ui.jsx';
@@ -16,7 +17,7 @@ import ForgotPassword from './pages/auth/ForgotPassword.jsx';
 import FamilyHome from './pages/parent/FamilyHome.jsx';
 import ChildDetail from './pages/parent/ChildDetail.jsx';
 import ChildFormPage from './pages/parent/ChildFormPage.jsx';
-import ProfilePage from './pages/ProfilePage.jsx';
+import AccountSettings from './pages/AccountSettings.jsx';
 
 // Staff and admin screens are only downloaded by staff.
 const StaffDashboard = lazy(() => import('./pages/staff/StaffDashboard.jsx'));
@@ -28,6 +29,7 @@ const SettingsPage = lazy(() => import('./pages/admin/SettingsPage.jsx'));
 
 export default function App() {
   return (
+    <I18nProvider>
     <AuthProvider>
       <SettingsProvider>
         <ToastProvider>
@@ -42,7 +44,8 @@ export default function App() {
                 <Route path="/verify-email" element={<VerifyEmail />} />
 
                 <Route path="/dashboard" element={<RequireAuth><DashboardRedirect /></RequireAuth>} />
-                <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+                <Route path="/settings" element={<RequireAuth><AccountSettings /></RequireAuth>} />
+                <Route path="/profile" element={<Navigate to="/settings" replace />} />
                 <Route path="/family" element={<RequireAuth><FamilyHome /></RequireAuth>} />
                 <Route path="/family/add" element={<RequireAuth><ChildFormPage mode="create" /></RequireAuth>} />
                 <Route path="/family/:studentId" element={<RequireAuth><ChildDetail /></RequireAuth>} />
@@ -65,5 +68,6 @@ export default function App() {
         </ToastProvider>
       </SettingsProvider>
     </AuthProvider>
+    </I18nProvider>
   );
 }

@@ -4,7 +4,7 @@ import IntroOverlay from './IntroOverlay.jsx';
 // Plays the intro once per browser session (replayable from the footer).
 // Later page loads get a short shutter transition instead.
 
-const KEY = 'maxtc.intro';
+const KEY = 'aclub.intro';
 const IntroContext = createContext({ done: true, replay: () => {} });
 
 function seen() {

@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../firebase.js';
 import { friendlyError } from '../../lib/errors.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { ErrorAlert, Field } from '../../components/ui.jsx';
 import Crest from '../../components/Crest.jsx';
 
 export default function ForgotPassword() {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -32,30 +34,32 @@ export default function ForgotPassword() {
     <div className="auth-wrap">
       <div className="card auth-card">
         <Crest className="crest-img" label="" />
-        <h1>Reset your password</h1>
+        <h1>{t('forgot.title')}</h1>
         {sent ? (
           <>
             <div className="alert alert-success">
-              If an account exists for <strong>{email}</strong>, a reset link is on its way. Check your inbox (and spam folder).
+              {t('forgot.sentBefore')}
+              <strong>{email}</strong>
+              {t('forgot.sentAfter')}
             </div>
-            <p style={{ marginTop: '1rem' }}>
-              <Link to="/login">Back to sign in</Link>
+            <p style={{ marginTop: 16 }}>
+              <Link to="/login">{t('forgot.back')}</Link>
             </p>
           </>
         ) : (
           <form className="form" onSubmit={submit}>
             <p className="muted" style={{ margin: 0 }}>
-              Enter the email you signed up with and we’ll send you a link to choose a new password.
+              {t('forgot.intro')}
             </p>
             <ErrorAlert error={error} />
-            <Field label="Email">
+            <Field label={t('auth.email')}>
               {(id) => <input id={id} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />}
             </Field>
             <button className="btn btn-primary btn-block" disabled={busy || !email}>
-              {busy ? 'Sending…' : 'Send reset link'}
+              {busy ? t('forgot.sending') : t('forgot.send')}
             </button>
             <Link to="/login" className="small">
-              Back to sign in
+              {t('forgot.back')}
             </Link>
           </form>
         )}

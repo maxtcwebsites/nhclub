@@ -3,6 +3,7 @@ import { collection, doc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { useCollection, useDocument } from '../../lib/useFirestore.js';
 import { formatMoney, fullName } from '../../lib/billing.js';
 import { ageFrom } from '../../lib/dates.js';
@@ -13,6 +14,7 @@ export default function ChildDetail() {
   const { studentId } = useParams();
   const { user } = useAuth();
   const { settings } = useSettings();
+  const { t } = useI18n();
   const { data: student, loading, error } = useDocument(() => doc(db, 'students', studentId), [studentId]);
   // Parents may only query their own records, so filter by parent first.
   const payments = useCollection(() => query(collection(db, 'payments'), where('parentUid', '==', user.uid)), [user.uid]);
@@ -22,9 +24,9 @@ export default function ChildDetail() {
   if (error || !student) {
     return (
       <div className="card">
-        <Empty code="404" title="Child not found">
-          <p>It may have been removed, or it belongs to another account.</p>
-          <Link to="/family">Back to my family</Link>
+        <Empty code="404" title={t('child.notFound')}>
+          <p>{t('child.notFoundText')}</p>
+          <Link to="/family">{t('child.backFamily')}</Link>
         </Empty>
       </div>
     );
@@ -37,21 +39,21 @@ export default function ChildDetail() {
   return (
     <>
       <Link to="/family" className="back-link">
-        &lt;&lt; My family
+        {t('child.back')}
       </Link>
       <div className="page-head">
         <div className="row">
           <div className="avatar lg">{initials(student.firstName, student.lastName)}</div>
           <div>
-            <h1 style={{ marginBottom: '0.2rem' }}>{fullName(student)}</h1>
+            <h1 style={{ marginBottom: 6 }}>{fullName(student)}</h1>
             <div className="row">
               <StatusBadge student={student} soonDays={settings.expiringSoonDays} />
-              {age !== null && <span className="muted small mono">{age} yrs</span>}
+              {age !== null && <span className="muted small mono">{t('common.years', { n: age })}</span>}
             </div>
           </div>
         </div>
-        <Link to={`/family/${studentId}/edit`} className="btn btn-secondary">
-          Edit details
+        <Link to={`/family/${studentId}/edit`} className="btn">
+          {t('child.edit')}
         </Link>
       </div>
 
@@ -61,15 +63,15 @@ export default function ChildDetail() {
         <div className="stack stagger">
           <div className="card">
             <div className="card-title">
-              <h2>Payment history</h2>
-              <span className="muted small">Total paid: {formatMoney(student.totalPaidCents, settings.currency)}</span>
+              <h2>{t('child.payments')}</h2>
+              <span className="muted small">{t('child.totalPaid', { amount: formatMoney(student.totalPaidCents, settings.currency) })}</span>
             </div>
             <ErrorAlert error={payments.error} />
             {payments.loading ? <Spinner /> : <PaymentsTable payments={myPayments} currency={settings.currency} />}
           </div>
           <div className="card">
             <div className="card-title">
-              <h2>Attendance</h2>
+              <h2>{t('child.attendance')}</h2>
             </div>
             <ErrorAlert error={attendance.error} />
             <AttendanceCalendar records={myAttendance} clubDays={settings.clubDays} />
@@ -77,7 +79,7 @@ export default function ChildDetail() {
         </div>
         <div className="card">
           <div className="card-title">
-            <h2>Details</h2>
+            <h2>{t('child.details')}</h2>
           </div>
           <ChildDetails student={student} />
         </div>

@@ -11,8 +11,12 @@ import {
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { fullName, periodEndFor, resolveCredit } from './billing.js';
+import { formatMoney, fullName, periodEndFor, resolveCredit } from './billing.js';
 import { formatDate, isDateStr } from './dates.js';
+import { tr } from '../i18n/index.js';
+
+// Audit-log messages are written in the language of the person making the
+// change (Spanish by default). Field names: field.<key>.
 
 export const PROFILE_FIELDS = [
   'firstName',
@@ -26,17 +30,6 @@ export const PROFILE_FIELDS = [
   'authorizedPickup',
 ];
 
-const PROFILE_LABELS = {
-  firstName: 'first name',
-  lastName: 'last name',
-  dateOfBirth: 'date of birth',
-  grade: 'grade',
-  allergies: 'allergies',
-  medicalNotes: 'medical notes',
-  emergencyName: 'emergency contact',
-  emergencyPhone: 'emergency phone',
-  authorizedPickup: 'authorized pickup',
-};
 
 const clip = (text, max) => String(text ?? '').trim().slice(0, max);
 
@@ -123,10 +116,7 @@ export async function setUserRole(db, actor, target, role) {
     logEntry(actor, {
       type: 'role_changed',
       targetUid: target.uid,
-      message:
-        role === 'teacher'
-          ? `Promoted ${target.displayName} (${target.email}) to teacher`
-          : `Removed teacher access from ${target.displayName} (${target.email})`,
+      message: tr(role === 'teacher' ? 'log.promoted' : 'log.demoted', { name: target.displayName, email: target.email }),
     }),
   );
   await batch.commit();
@@ -154,7 +144,10 @@ export async function saveSettings(db, actor, settings) {
     logRef,
     logEntry(actor, {
       type: 'settings_updated',
-      message: `Updated club settings (absence policy: ${settings.absencePolicy}, monthly fee: ${(settings.monthlyFeeCents / 100).toFixed(2)})`,
+      message: tr('log.settings', {
+        policy: tr(`policy.${settings.absencePolicy}.label`),
+        fee: formatMoney(settings.monthlyFeeCents, settings.currency),
+      }),
     }),
   );
   await batch.commit();
@@ -190,7 +183,7 @@ export async function createStudent(db, actor, input) {
     logEntry(actor, {
       type: 'student_created',
       studentId: studentRef.id,
-      message: `${actor.name} registered ${fullName(profile)}`,
+      message: tr('log.registered', { actor: actor.name, child: fullName(profile) }),
     }),
   );
   await batch.commit();
@@ -211,7 +204,10 @@ export async function updateStudentProfile(db, actor, student, input) {
     logEntry(actor, {
       type: 'student_updated',
       studentId: student.id,
-      message: `Updated ${changed.map((k) => PROFILE_LABELS[k]).join(', ')} for ${fullName(profile)}`,
+      message: tr('log.updated', {
+        fields: changed.map((k) => tr(`field.${k}`).toLowerCase()).join(', '),
+        child: fullName(profile),
+      }),
     }),
   );
   await batch.commit();
@@ -226,13 +222,14 @@ export async function setStudentStatus(db, actor, student, status, reason = '') 
     updatedAt: serverTimestamp(),
     lastLogId: logRef.id,
   });
-  const verb = status === 'archived' ? 'Archived' : 'Re-activated';
   batch.set(
     logRef,
     logEntry(actor, {
       type: 'status_changed',
       studentId: student.id,
-      message: `${verb} ${fullName(student)}${reason ? ` — ${reason}` : ''}`,
+      message:
+        tr(status === 'archived' ? 'log.archived' : 'log.reactivated', { child: fullName(student) }) +
+        (reason ? ` — ${reason}` : ''),
     }),
   );
   await batch.commit();
@@ -246,7 +243,7 @@ async function writeLedgerEntry(db, actor, studentId, buildEntry) {
   return runTransaction(db, async (tx) => {
     const studentRef = doc(db, 'students', studentId);
     const snap = await tx.get(studentRef);
-    if (!snap.exists()) throw new Error('Student not found.');
+    if (!snap.exists()) throw new Error(tr('errors.studentNotFound'));
     const student = { id: snap.id, ...snap.data() };
     const { entry, message, type } = buildEntry(student);
 
@@ -278,9 +275,9 @@ async function writeLedgerEntry(db, actor, studentId, buildEntry) {
 }
 
 export async function recordPayment(db, actor, studentId, { amountCents, months, method, periodStart, note, currency }) {
-  if (!Number.isInteger(amountCents) || amountCents <= 0) throw new Error('Enter an amount greater than zero.');
-  if (!Number.isInteger(months) || months < 1 || months > 24) throw new Error('Months must be between 1 and 24.');
-  if (!isDateStr(periodStart)) throw new Error('Pick a start date.');
+  if (!Number.isInteger(amountCents) || amountCents <= 0) throw new Error(tr('pay.errAmount'));
+  if (!Number.isInteger(months) || months < 1 || months > 24) throw new Error(tr('pay.errMonths'));
+  if (!isDateStr(periodStart)) throw new Error(tr('pay.errStart'));
   const periodEnd = periodEndFor(periodStart, months);
   return writeLedgerEntry(db, actor, studentId, (student) => ({
     type: 'payment',
@@ -294,15 +291,21 @@ export async function recordPayment(db, actor, studentId, { amountCents, months,
       periodEnd,
       note: clip(note, 500),
     },
-    message: `Payment of ${currency}${(amountCents / 100).toFixed(2)} for ${months} month${months === 1 ? '' : 's'} (${formatDate(periodStart)} – ${formatDate(periodEnd)}) for ${fullName(student)}`,
+    message: tr('log.payment', {
+      amount: formatMoney(amountCents, currency),
+      months: tr('time.months', { n: months }),
+      from: formatDate(periodStart),
+      to: formatDate(periodEnd),
+      child: fullName(student),
+    }),
   }));
 }
 
 export async function recordCorrection(db, actor, studentId, { newPaidUntil, amountCents, months, note, currency }) {
-  if (!isDateStr(newPaidUntil)) throw new Error('Pick the new paid-until date.');
-  if (!Number.isInteger(amountCents)) throw new Error('Enter a valid amount (use 0 for none).');
-  if (!Number.isInteger(months) || months < -24 || months > 24) throw new Error('Months must be between -24 and 24.');
-  if (clip(note, 500).length < 3) throw new Error('Please explain the reason for the correction.');
+  if (!isDateStr(newPaidUntil)) throw new Error(tr('fix.errDate'));
+  if (!Number.isInteger(amountCents)) throw new Error(tr('fix.errAmount'));
+  if (!Number.isInteger(months) || months < -24 || months > 24) throw new Error(tr('fix.errMonths'));
+  if (clip(note, 500).length < 3) throw new Error(tr('fix.errReason'));
   return writeLedgerEntry(db, actor, studentId, (student) => ({
     type: 'correction',
     entry: {
@@ -315,7 +318,14 @@ export async function recordCorrection(db, actor, studentId, { newPaidUntil, amo
       periodEnd: newPaidUntil,
       note: clip(note, 500),
     },
-    message: `Correction for ${fullName(student)}: paid until ${formatDate(student.paidUntil)} → ${formatDate(newPaidUntil)}, amount ${currency}${(amountCents / 100).toFixed(2)}, months ${months}. Reason: ${clip(note, 300)}`,
+    message: tr('log.correction', {
+      child: fullName(student),
+      from: formatDate(student.paidUntil),
+      to: formatDate(newPaidUntil),
+      amount: formatMoney(amountCents, currency),
+      months,
+      reason: clip(note, 300),
+    }),
   }));
 }
 
@@ -323,16 +333,17 @@ export async function recordCorrection(db, actor, studentId, { newPaidUntil, amo
 // Attendance
 // ---------------------------------------------------------------------------
 
-export const ATTENDANCE_LABELS = { present: 'Present', absent: 'Absent', excused: 'Excused' };
+// Labels: att.<status>
+export const ATTENDANCE_STATUSES = ['present', 'absent', 'excused'];
 
 export async function setAttendance(db, actor, studentId, { date, status, note, policy }) {
-  if (!isDateStr(date)) throw new Error('Invalid date.');
-  if (!ATTENDANCE_LABELS[status]) throw new Error('Invalid status.');
+  if (!isDateStr(date)) throw new Error(tr('errors.invalidDate'));
+  if (!ATTENDANCE_STATUSES.includes(status)) throw new Error(tr('errors.invalidStatus'));
   return runTransaction(db, async (tx) => {
     const studentRef = doc(db, 'students', studentId);
     const attendanceRef = doc(db, 'attendance', `${studentId}_${date}`);
     const studentSnap = await tx.get(studentRef);
-    if (!studentSnap.exists()) throw new Error('Student not found.');
+    if (!studentSnap.exists()) throw new Error(tr('errors.studentNotFound'));
     const attendanceSnap = await tx.get(attendanceRef);
     const student = { id: studentSnap.id, ...studentSnap.data() };
     const previous = attendanceSnap.exists() ? attendanceSnap.data() : null;
@@ -363,11 +374,11 @@ export async function setAttendance(db, actor, studentId, { date, status, note, 
       updatedAt: serverTimestamp(),
       lastLogId: logRef.id,
     });
-    let message = `Marked ${fullName(student)} ${ATTENDANCE_LABELS[status].toLowerCase()} on ${formatDate(date)}`;
-    if (previous && previous.status !== status) message += ` (was ${previous.status})`;
-    if (cleanNote) message += ` — note: ${cleanNote}`;
-    if (delta > 0) message += ' (+1 day added to subscription)';
-    if (delta < 0) message += ' (absence credit removed)';
+    let message = tr('log.marked', { child: fullName(student), status: tr(`att.${status}`).toLowerCase(), date: formatDate(date) });
+    if (previous && previous.status !== status) message += ` ${tr('log.was', { status: tr(`att.${previous.status}`).toLowerCase() })}`;
+    if (cleanNote) message += ` — ${tr('log.note', { note: cleanNote })}`;
+    if (delta > 0) message += ` ${tr('log.creditAdded')}`;
+    if (delta < 0) message += ` ${tr('log.creditRemoved')}`;
     tx.set(logRef, logEntry(actor, { type: 'attendance', studentId, message }));
     return { credited, changed: true };
   });
@@ -395,7 +406,10 @@ export async function clearAttendance(db, actor, studentId, date) {
       logEntry(actor, {
         type: 'attendance_cleared',
         studentId,
-        message: `Cleared attendance for ${fullName(student)} on ${formatDate(date)} (was ${previous.status})${previous.credited ? ' — absence credit removed' : ''}`,
+        message:
+          tr('log.cleared', { child: fullName(student), date: formatDate(date) }) +
+          ` ${tr('log.was', { status: tr(`att.${previous.status}`).toLowerCase() })}` +
+          (previous.credited ? ` ${tr('log.creditRemoved')}` : ''),
       }),
     );
     return true;

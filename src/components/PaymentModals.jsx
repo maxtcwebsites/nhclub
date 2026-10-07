@@ -3,6 +3,7 @@ import { db } from '../firebase.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { useI18n } from '../i18n/I18nContext.jsx';
 import { recordCorrection, recordPayment } from '../lib/api.js';
 import {
   centsToInput,
@@ -11,7 +12,7 @@ import {
   fullName,
   nextPeriodStart,
   parseMoneyToCents,
-  PAYMENT_METHODS,
+  PAYMENT_METHOD_KEYS,
   periodEndFor,
 } from '../lib/billing.js';
 import { formatDate, isDateStr, todayStr } from '../lib/dates.js';
@@ -21,6 +22,7 @@ import { ErrorAlert, Field, Modal } from './ui.jsx';
 export function PaymentModal({ student, onClose }) {
   const { actor } = useAuth();
   const { settings } = useSettings();
+  const { t } = useI18n();
   const toast = useToast();
   const today = todayStr();
   const [months, setMonths] = useState(1);
@@ -46,8 +48,8 @@ export function PaymentModal({ student, onClose }) {
   async function submit(e) {
     e.preventDefault();
     setError('');
-    if (!Number.isInteger(cents) || cents <= 0) return setError('Enter the amount received (more than 0).');
-    if (!isDateStr(start)) return setError('Pick the date the paid period starts.');
+    if (!Number.isInteger(cents) || cents <= 0) return setError(t('pay.errAmount'));
+    if (!isDateStr(start)) return setError(t('pay.errStart'));
     setBusy(true);
     try {
       await recordPayment(db, actor, student.id, {
@@ -58,7 +60,7 @@ export function PaymentModal({ student, onClose }) {
         note,
         currency: settings.currency,
       });
-      toast(`Payment recorded for ${student.firstName}`);
+      toast(t('pay.done', { name: student.firstName }));
       onClose();
     } catch (err) {
       setError(friendlyError(err));
@@ -67,25 +69,25 @@ export function PaymentModal({ student, onClose }) {
   }
 
   return (
-    <Modal title={`Record payment — ${fullName(student)}`} onClose={onClose}>
+    <Modal title={t('pay.title', { name: fullName(student) })} onClose={onClose}>
       <form className="form" onSubmit={submit}>
         <ErrorAlert error={error} />
         <p className="small muted" style={{ margin: 0 }}>
-          Currently: {currentExpiry ? `paid until ${formatDate(currentExpiry)}` : 'no payment recorded yet'}.
+          {currentExpiry ? t('pay.currentPaid', { date: formatDate(currentExpiry) }) : t('pay.currentNone')}
         </p>
         <div className="grid grid-2">
-          <Field label="Months paid" required>
+          <Field label={t('pay.months')} required>
             {(id) => (
               <select id={id} value={months} onChange={(e) => changeMonths(e.target.value)}>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m}>
-                    {m} month{m === 1 ? '' : 's'}
+                    {t('pay.monthsOption', { n: m })}
                   </option>
                 ))}
               </select>
             )}
           </Field>
-          <Field label={`Amount received (${settings.currency})`} required>
+          <Field label={t('pay.amount', { currency: settings.currency })} required>
             {(id) => (
               <input
                 id={id}
@@ -100,45 +102,41 @@ export function PaymentModal({ student, onClose }) {
               />
             )}
           </Field>
-          <Field label="Method">
+          <Field label={t('pay.method')}>
             {(id) => (
               <select id={id} value={method} onChange={(e) => setMethod(e.target.value)}>
-                {['cash', 'card', 'bank_transfer', 'other'].map((m) => (
+                {PAYMENT_METHOD_KEYS.map((m) => (
                   <option key={m} value={m}>
-                    {PAYMENT_METHODS[m]}
+                    {t(`method.${m}`)}
                   </option>
                 ))}
               </select>
             )}
           </Field>
-          <Field label="Starts on" required hint="Defaults to the day after the current period.">
+          <Field label={t('pay.starts')} required hint={t('pay.startsHint')}>
             {(id) => <input id={id} type="date" value={start} onChange={(e) => setStart(e.target.value)} />}
           </Field>
         </div>
-        <Field label="Note" hint="Optional — e.g. receipt number.">
+        <Field label={t('pay.note')} hint={t('pay.noteHint')}>
           {(id) => <input id={id} type="text" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />}
         </Field>
         {end && (
           <div className="preview">
-            Covers {formatDate(start)} – {formatDate(end)}
+            {t('pay.covers', { from: formatDate(start), to: formatDate(end) })}
             <div className="small muted" style={{ fontWeight: 600 }}>
-              New paid-until date: {formatDate(end)}
+              {t('pay.newEnd', { date: formatDate(end) })}
               {cents > 0 ? ` · ${formatMoney(cents, settings.currency)}` : ''}
-              {student.creditDays > 0 ? ` · the ${student.creditDays} absence day(s) are already counted in the start date` : ''}
+              {student.creditDays > 0 ? ` · ${t('pay.creditFolded', { n: student.creditDays })}` : ''}
             </div>
           </div>
         )}
-        {overlaps && (
-          <div className="alert alert-warn small">
-            This start date overlaps the period that is already paid (until {formatDate(currentExpiry)}).
-          </div>
-        )}
+        {overlaps && <div className="alert alert-warn small">{t('pay.overlap', { date: formatDate(currentExpiry) })}</div>}
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button className="btn btn-primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Record payment'}
+            {busy ? t('common.saving') : t('pay.submit')}
           </button>
         </div>
       </form>
@@ -149,6 +147,7 @@ export function PaymentModal({ student, onClose }) {
 export function CorrectionModal({ student, onClose }) {
   const { actor } = useAuth();
   const { settings } = useSettings();
+  const { t } = useI18n();
   const toast = useToast();
   const current = effectiveExpiry(student);
   const [paidUntil, setPaidUntil] = useState(current || todayStr());
@@ -163,10 +162,10 @@ export function CorrectionModal({ student, onClose }) {
     setError('');
     const cents = parseMoneyToCents(amount);
     const m = Number(months);
-    if (!Number.isInteger(cents)) return setError('Enter an amount like 0, 25 or -25.');
-    if (!Number.isInteger(m) || m < -24 || m > 24) return setError('Months must be a whole number between -24 and 24.');
-    if (note.trim().length < 3) return setError('Please write the reason for this correction.');
-    if (!isDateStr(paidUntil)) return setError('Pick the new paid-until date.');
+    if (!Number.isInteger(cents)) return setError(t('fix.errAmount'));
+    if (!Number.isInteger(m) || m < -24 || m > 24) return setError(t('fix.errMonths'));
+    if (note.trim().length < 3) return setError(t('fix.errReason'));
+    if (!isDateStr(paidUntil)) return setError(t('fix.errDate'));
     setBusy(true);
     try {
       await recordCorrection(db, actor, student.id, {
@@ -176,7 +175,7 @@ export function CorrectionModal({ student, onClose }) {
         note,
         currency: settings.currency,
       });
-      toast('Correction saved');
+      toast(t('fix.done'));
       onClose();
     } catch (err) {
       setError(friendlyError(err));
@@ -185,33 +184,32 @@ export function CorrectionModal({ student, onClose }) {
   }
 
   return (
-    <Modal title={`Correction — ${fullName(student)}`} onClose={onClose}>
+    <Modal title={t('fix.title', { name: fullName(student) })} onClose={onClose}>
       <form className="form" onSubmit={submit}>
         <p className="small muted" style={{ margin: 0 }}>
-          Use this to fix a mistake, give free days or record a refund. Nothing is deleted: the correction is added to the history
-          with your name and reason.
+          {t('fix.intro')}
         </p>
         <ErrorAlert error={error} />
-        <Field label="New paid-until date" required hint={`Currently ${current ? formatDate(current) : 'not paid'}.`}>
+        <Field label={t('fix.newDate')} required hint={t('fix.currently', { date: current ? formatDate(current) : t('fix.notPaid') })}>
           {(id) => <input id={id} type="date" value={paidUntil} onChange={(e) => setPaidUntil(e.target.value)} />}
         </Field>
         <div className="grid grid-2">
-          <Field label={`Amount change (${settings.currency})`} hint="Negative for a refund, 0 for none.">
+          <Field label={t('fix.amount', { currency: settings.currency })} hint={t('fix.amountHint')}>
             {(id) => <input id={id} type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />}
           </Field>
-          <Field label="Months change" hint="e.g. -1 if a month was entered twice.">
+          <Field label={t('fix.months')} hint={t('fix.monthsHint')}>
             {(id) => <input id={id} type="number" min={-24} max={24} step={1} value={months} onChange={(e) => setMonths(e.target.value)} />}
           </Field>
         </div>
-        <Field label="Reason" required>
+        <Field label={t('fix.reason')} required>
           {(id) => <textarea id={id} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />}
         </Field>
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button className="btn btn-primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save correction'}
+            {busy ? t('common.saving') : t('fix.submit')}
           </button>
         </div>
       </form>

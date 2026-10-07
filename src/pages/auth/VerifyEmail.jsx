@@ -6,10 +6,12 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { friendlyError } from '../../lib/errors.js';
 import { ErrorAlert, Spinner } from '../../components/ui.jsx';
 import Crest from '../../components/Crest.jsx';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 
 export default function VerifyEmail() {
   const { user, emailVerified, refreshVerification, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [cooldown, setCooldown] = useState(0);
@@ -38,15 +40,21 @@ export default function VerifyEmail() {
     <div className="auth-wrap">
       <div className="card auth-card">
         <Crest className="crest-img" label="" />
-        <div className="eyebrow">Confirm your email</div>
-        <h1>Check your inbox</h1>
+        <div className="eyebrow">{t('verify.eyebrow')}</div>
+        <h1>{t('verify.title')}</h1>
         <p>
-          We sent a confirmation link to <strong>{user.email}</strong>. Open it to activate your account, then come back here.
+          {t('verify.sentBefore')}
+          <strong>{user.email}</strong>
+          {t('verify.sentAfter')}
         </p>
-        <p className="muted small">Can’t find it? Look in your spam or promotions folder.</p>
-        {message && <div className="alert alert-success" style={{ marginBottom: '1rem' }}>{message}</div>}
+        <p className="muted small">{t('verify.spam')}</p>
+        {message && (
+          <div className="alert alert-success" style={{ marginBottom: 16 }}>
+            {message}
+          </div>
+        )}
         <ErrorAlert error={error} />
-        <div className="form" style={{ marginTop: '1rem' }}>
+        <div className="form" style={{ marginTop: 16 }}>
           <button
             type="button"
             className="btn btn-primary btn-block"
@@ -57,7 +65,7 @@ export default function VerifyEmail() {
               try {
                 const ok = await refreshVerification();
                 if (ok) navigate('/dashboard', { replace: true });
-                else setError('Your email is not confirmed yet. Click the link in the email first.');
+                else setError(t('verify.notYet'));
               } catch (err) {
                 setError(friendlyError(err));
               } finally {
@@ -65,7 +73,7 @@ export default function VerifyEmail() {
               }
             }}
           >
-            {checking ? 'Checking…' : 'I’ve confirmed my email'}
+            {checking ? t('verify.checking') : t('verify.done')}
           </button>
           <button
             type="button"
@@ -75,17 +83,17 @@ export default function VerifyEmail() {
               setError('');
               try {
                 await sendEmailVerification(auth.currentUser);
-                setMessage('A new link is on its way.');
+                setMessage(t('verify.resent'));
                 setCooldown(60);
               } catch (err) {
                 setError(friendlyError(err));
               }
             }}
           >
-            {cooldown > 0 ? `Resend link (${cooldown}s)` : 'Resend the link'}
+            {cooldown > 0 ? t('verify.resendIn', { s: cooldown }) : t('verify.resend')}
           </button>
           <button type="button" className="btn btn-ghost btn-block" onClick={() => logout()}>
-            Use a different account
+            {t('verify.other')}
           </button>
         </div>
       </div>

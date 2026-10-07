@@ -3,9 +3,11 @@ import { subscriptionInfo } from '../lib/billing.js';
 import { formatDate, todayStr } from '../lib/dates.js';
 import { friendlyError } from '../lib/errors.js';
 import { CrestLoader } from './Crest.jsx';
+import { useI18n } from '../i18n/I18nContext.jsx';
 
-export function Spinner({ label = 'Loading' }) {
-  return <CrestLoader label={label} />;
+export function Spinner({ label }) {
+  const { t } = useI18n();
+  return <CrestLoader label={label || t('common.loading')} />;
 }
 
 export function ErrorAlert({ error }) {
@@ -46,48 +48,33 @@ export function Field({ label, required, hint, error, children, id }) {
 }
 
 export function StatusBadge({ student, soonDays }) {
+  const { t } = useI18n();
   const info = subscriptionInfo(student, todayStr(), soonDays);
-  const text = {
-    active: 'Paid',
-    expiring: 'Expiring soon',
-    expired: 'Expired',
-    unpaid: 'Not paid yet',
-    archived: 'Archived',
-  }[info.state];
-  return <span className={`badge badge-${info.state}`}>{text}</span>;
+  return <span className={`badge badge-${info.state}`}>{t(`status.${info.state}`)}</span>;
 }
 
 export function RoleBadge({ role }) {
-  const text = { admin: 'Super admin', teacher: 'Teacher', parent: 'Parent' }[role] || role;
-  return <span className={`badge plain badge-${role}`}>{text}</span>;
+  const { t } = useI18n();
+  return <span className={`badge plain badge-${role}`}>{['admin', 'teacher', 'parent'].includes(role) ? t(`roles.${role}`) : role}</span>;
 }
 
 export function SubscriptionHero({ student, soonDays }) {
+  const { t } = useI18n();
   const info = subscriptionInfo(student, todayStr(), soonDays);
-  const headline = {
-    active: 'Subscription active',
-    expiring: 'Subscription ending soon',
-    expired: 'Subscription expired',
-    unpaid: 'No payment recorded yet',
-    archived: 'No longer enrolled',
-  }[info.state];
   return (
     <div className={`status-hero ${info.state}`}>
       <div>
-        <div className="label">{headline}</div>
-        <div className="big">{info.expiry ? `Paid until ${formatDate(info.expiry)}` : 'Waiting for first payment'}</div>
+        <div className="label">{t(`hero.${info.state}`)}</div>
+        <div className="big">{info.expiry ? t('hero.paidUntil', { date: formatDate(info.expiry) }) : t('hero.waiting')}</div>
         {info.expiry && <div className="days">{info.label}</div>}
       </div>
-      {student.creditDays > 0 && (
-        <div className="extra">
-          +{student.creditDays} day{student.creditDays === 1 ? '' : 's'} for absences
-        </div>
-      )}
+      {student.creditDays > 0 && <div className="extra">{t('hero.credit', { n: student.creditDays })}</div>}
     </div>
   );
 }
 
 export function Modal({ title, onClose, children, wide = false }) {
+  const { t } = useI18n();
   const ref = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -116,7 +103,7 @@ export function Modal({ title, onClose, children, wide = false }) {
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} ref={ref} style={wide ? { maxWidth: 720 } : undefined}>
         <div className="modal-head">
           <h2>{title}</h2>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="modal-close" onClick={onClose} aria-label={t('common.close')}>
             ×
           </button>
         </div>

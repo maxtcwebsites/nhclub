@@ -6,7 +6,8 @@
 // The visuals in IntroOverlay.jsx use the same timeline (TIMELINE below), so
 // every slam, pulse and letter lands on the beat.
 
-export const NAME = 'Max TC';
+// Creator credit typed out at the end of the intro.
+export const CREDIT = 'Max TC';
 
 const BEAT = 0.5; // 120 BPM
 
@@ -375,7 +376,7 @@ export function playScore(engine, s) {
   });
 
   // Typewriter: one key per letter, then the bell.
-  [...NAME].forEach((ch, i) => {
+  [...CREDIT].forEach((ch, i) => {
     const t = s + T.typeStart + i * T.typeStep;
     if (ch === ' ') spaceBar(t);
     else typeKey(t, 1);

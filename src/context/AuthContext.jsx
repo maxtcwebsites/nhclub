@@ -4,6 +4,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase.js';
 import { ensureUserProfile, signupInProgress } from '../lib/api.js';
 import { STAFF_IDLE_TIMEOUT_MINUTES, SUPER_ADMIN_EMAIL } from '../config.js';
+import { tr } from '../i18n/index.js';
 
 const AuthContext = createContext(null);
 
@@ -81,7 +82,7 @@ export function AuthProvider({ children }) {
     events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
     const timer = setInterval(() => {
       if (Date.now() - lastActivity.current > STAFF_IDLE_TIMEOUT_MINUTES * 60 * 1000) {
-        logout(`You were signed out after ${STAFF_IDLE_TIMEOUT_MINUTES} minutes of inactivity.`);
+        logout(tr('auth.idle', { n: STAFF_IDLE_TIMEOUT_MINUTES }));
       }
     }, 30 * 1000);
     return () => {

@@ -6,7 +6,7 @@
 // If you change it, change it in firestore.rules too.
 export const SUPER_ADMIN_EMAIL = 'r45t6er7@gmail.com';
 
-export const CLUB_NAME = 'Max TC';
+export const CLUB_NAME = 'AClub';
 export const LOCATION_NAME = 'Northhill';
 
 // Google Analytics (page views only). Set to false to turn it off.

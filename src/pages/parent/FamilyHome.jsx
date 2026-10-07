@@ -3,6 +3,7 @@ import { collection, query, where } from 'firebase/firestore';
 import { db } from '../../firebase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { useCollection } from '../../lib/useFirestore.js';
 import { formatMoney, fullName, subscriptionInfo } from '../../lib/billing.js';
 import { ageFrom, formatDate, todayStr } from '../../lib/dates.js';
@@ -11,6 +12,7 @@ import { Empty, ErrorAlert, initials, Spinner, StatusBadge } from '../../compone
 export default function FamilyHome() {
   const { user, profile, isStaff } = useAuth();
   const { settings } = useSettings();
+  const { t } = useI18n();
   const { data, loading, error } = useCollection(
     () => query(collection(db, 'students'), where('parentUid', '==', user.uid)),
     [user.uid],
@@ -22,18 +24,18 @@ export default function FamilyHome() {
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">My family</div>
-          <h1>Hi, {profile.displayName.split(' ')[0]}</h1>
-          <p className="muted">Your children, their club subscription and attendance — updated live.</p>
+          <div className="eyebrow">{t('family.eyebrow')}</div>
+          <h1>{t('family.hi', { name: profile.displayName.split(' ')[0] })}</h1>
+          <p className="muted">{t('family.subtitle')}</p>
         </div>
         <div className="row">
           {isStaff && (
-            <Link to="/staff" className="btn btn-secondary">
-              Staff dashboard
+            <Link to="/staff" className="btn">
+              {t('family.staffDashboard')}
             </Link>
           )}
           <Link to="/family/add" className="btn btn-primary">
-            + Add a child
+            {t('family.addChild')}
           </Link>
         </div>
       </div>
@@ -44,10 +46,10 @@ export default function FamilyHome() {
         <Spinner />
       ) : children.length === 0 ? (
         <div className="card">
-          <Empty code="NO CHILDREN" title="No children registered yet">
-            <p>Add your first child to enroll them in the club.</p>
+          <Empty code={t('family.emptyCode')} title={t('family.emptyTitle')}>
+            <p>{t('family.emptyText')}</p>
             <Link to="/family/add" className="btn btn-primary">
-              + Add a child
+              {t('family.addChild')}
             </Link>
           </Empty>
         </div>
@@ -63,7 +65,7 @@ export default function FamilyHome() {
                   <div style={{ minWidth: 0 }}>
                     <h3 style={{ margin: 0 }}>{fullName(child)}</h3>
                     <div className="muted small mono">
-                      {age !== null ? `${age} yrs` : ''}
+                      {age !== null ? t('common.years', { n: age }) : ''}
                       {child.grade ? ` / ${child.grade}` : ''}
                     </div>
                   </div>
@@ -74,19 +76,20 @@ export default function FamilyHome() {
                 <div className="preview">
                   {info.expiry ? (
                     <>
-                      Paid until <strong>{formatDate(info.expiry)}</strong>
+                      {t('family.paidUntil')}
+                      <strong>{formatDate(info.expiry)}</strong>
                       <div className="small muted">{info.label}</div>
                     </>
                   ) : info.state === 'archived' ? (
-                    'No longer enrolled'
+                    t('family.notEnrolled')
                   ) : (
                     <>
-                      <strong>Waiting for first payment</strong>
-                      <div className="small muted">Pay at the club — it shows here once recorded.</div>
+                      <strong>{t('family.waiting')}</strong>
+                      <div className="small muted">{t('family.payHint')}</div>
                     </>
                   )}
                 </div>
-                <span className="go">Payments &amp; attendance &gt;&gt;</span>
+                <span className="go">{t('family.go')}</span>
               </Link>
             );
           })}
@@ -94,14 +97,14 @@ export default function FamilyHome() {
       )}
 
       <div className="alert alert-info section">
-        Pay at the club. Staff record it and it shows up here right away.
+        {t('family.payNote')}
         {settings.monthlyFeeCents > 0 && (
           <>
             {' '}
-            Monthly fee: <strong>{formatMoney(settings.monthlyFeeCents, settings.currency)}</strong>.
+            {t('family.fee')} <strong>{formatMoney(settings.monthlyFeeCents, settings.currency)}</strong>.
           </>
         )}{' '}
-        Paid but not showing? Contact the club with your child’s name and the payment date.
+        {t('family.payMissing')}
       </div>
     </>
   );

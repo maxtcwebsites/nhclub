@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { collection, limit, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import { db } from '../../firebase.js';
 import { useSettings } from '../../context/SettingsContext.jsx';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { useCollection } from '../../lib/useFirestore.js';
 import { compareByUrgency, formatMoney, fullName, subscriptionInfo } from '../../lib/billing.js';
 import { ageFrom, formatDate, formatTimestamp, monthStart, parseDateStr, todayStr } from '../../lib/dates.js';
@@ -10,17 +11,18 @@ import { Empty, ErrorAlert, Spinner, StatusBadge } from '../../components/ui.jsx
 import { PaymentModal } from '../../components/PaymentModals.jsx';
 
 const FILTERS = [
-  { key: 'enrolled', label: 'All enrolled', test: (s) => s !== 'archived' },
-  { key: 'attention', label: 'Needs attention', test: (s) => s === 'expired' || s === 'expiring' || s === 'unpaid' },
-  { key: 'expiring', label: 'Expiring soon', test: (s) => s === 'expiring' },
-  { key: 'expired', label: 'Expired', test: (s) => s === 'expired' },
-  { key: 'unpaid', label: 'Not paid yet', test: (s) => s === 'unpaid' },
-  { key: 'active', label: 'Paid up', test: (s) => s === 'active' },
-  { key: 'archived', label: 'Archived', test: (s) => s === 'archived' },
+  { key: 'enrolled', test: (s) => s !== 'archived' },
+  { key: 'attention', test: (s) => s === 'expired' || s === 'expiring' || s === 'unpaid' },
+  { key: 'expiring', test: (s) => s === 'expiring' },
+  { key: 'expired', test: (s) => s === 'expired' },
+  { key: 'unpaid', test: (s) => s === 'unpaid' },
+  { key: 'active', test: (s) => s === 'active' },
+  { key: 'archived', test: (s) => s === 'archived' },
 ];
 
 export default function StaffDashboard() {
   const { settings } = useSettings();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('enrolled');
   const [search, setSearch] = useState('');
@@ -41,7 +43,8 @@ export default function StaffDashboard() {
       students.data
         .map((student) => ({ student, info: subscriptionInfo(student, today, settings.expiringSoonDays) }))
         .sort(compareByUrgency),
-    [students.data, today, settings.expiringSoonDays],
+    // lang: the status labels are translated
+    [students.data, today, settings.expiringSoonDays, lang], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const studentsById = useMemo(() => Object.fromEntries(students.data.map((s) => [s.id, s])), [students.data]);
 
@@ -60,32 +63,32 @@ export default function StaffDashboard() {
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">Staff dashboard</div>
-          <h1>Students</h1>
-          <p className="muted">Sorted by who needs attention first: expired, expiring soon, then not paid yet.</p>
+          <div className="eyebrow">{t('staff.eyebrow')}</div>
+          <h1>{t('staff.title')}</h1>
+          <p className="muted">{t('staff.subtitle')}</p>
         </div>
         <Link to="/staff/attendance" className="btn btn-primary">
-          Take attendance
+          {t('staff.takeAttendance')}
         </Link>
       </div>
 
       <div className="grid grid-4 stagger" style={{ marginBottom: 28 }}>
         <div className="card stat accent">
-          <div className="label">Enrolled</div>
+          <div className="label">{t('staff.enrolled')}</div>
           <div className="value">{count('enrolled')}</div>
         </div>
         <div className="card stat amber">
-          <div className="label">Expiring in {settings.expiringSoonDays} days</div>
+          <div className="label">{t('staff.expiringIn', { n: settings.expiringSoonDays })}</div>
           <div className="value">{count('expiring')}</div>
         </div>
         <div className="card stat red">
-          <div className="label">Expired / not paid</div>
+          <div className="label">{t('staff.expiredUnpaid')}</div>
           <div className="value">
             {count('expired')} <span className="of">/ {count('unpaid')}</span>
           </div>
         </div>
         <div className="card stat green">
-          <div className="label">Collected this month</div>
+          <div className="label">{t('staff.collected')}</div>
           <div className="value">{formatMoney(collected, settings.currency)}</div>
         </div>
       </div>
@@ -93,7 +96,7 @@ export default function StaffDashboard() {
       <ErrorAlert error={students.error || users.error} />
 
       <div className="toolbar">
-        <div className="chips" role="tablist" aria-label="Filter students">
+        <div className="chips" role="tablist" aria-label={t('staff.filterLabel')}>
           {FILTERS.map((f) => (
             <button
               key={f.key}
@@ -103,22 +106,23 @@ export default function StaffDashboard() {
               className={`chip ${filter === f.key ? 'on' : ''}`}
               onClick={() => setFilter(f.key)}
             >
-              {f.label}
+              {t(`staff.filters.${f.key}`)}
               <span className="count">{count(f.key)}</span>
             </button>
           ))}
         </div>
-        <input type="search" placeholder="Search child or parent…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search" />
+        <input type="search" placeholder={t('staff.search')} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t('staff.search')} />
       </div>
 
       {students.loading ? (
         <Spinner />
       ) : visible.length === 0 ? (
         <div className="card">
-          <Empty code={rows.length === 0 ? 'NO STUDENTS' : '0 RESULTS'} title={rows.length === 0 ? 'No students yet' : 'Nobody here'}>
-            <p className="small">
-              {rows.length === 0 ? 'Students appear here when parents register them.' : 'No students match this filter.'}
-            </p>
+          <Empty
+            code={rows.length === 0 ? t('staff.emptyCode') : t('staff.emptyFilterCode')}
+            title={rows.length === 0 ? t('staff.emptyNone') : t('staff.emptyFilter')}
+          >
+            <p className="small">{rows.length === 0 ? t('staff.emptyNoneText') : t('staff.emptyFilterText')}</p>
           </Empty>
         </div>
       ) : (
@@ -126,13 +130,13 @@ export default function StaffDashboard() {
           <table className="stack-table">
             <thead>
               <tr>
-                <th>Student</th>
-                <th>Parent</th>
-                <th>Status</th>
-                <th>Paid until</th>
-                <th className="right">Total paid</th>
+                <th>{t('staff.student')}</th>
+                <th>{t('staff.parent')}</th>
+                <th>{t('staff.status')}</th>
+                <th>{t('staff.paidUntil')}</th>
+                <th className="right">{t('staff.total')}</th>
                 <th>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{t('staff.actions')}</span>
                 </th>
               </tr>
             </thead>
@@ -147,35 +151,35 @@ export default function StaffDashboard() {
                         {fullName(student)}
                       </Link>
                       <span className="sub">
-                        {age !== null ? `${age} yrs` : ''}
-                        {student.allergies ? ' / ALLERGIES' : ''}
+                        {age !== null ? t('common.years', { n: age }) : ''}
+                        {student.allergies ? ` / ${t('staff.allergies')}` : ''}
                       </span>
                     </td>
-                    <td data-label="Parent">
+                    <td data-label={t('staff.parent')}>
                       {parent?.displayName ?? '—'}
                       <span className="sub">{parent?.phone || parent?.email}</span>
                     </td>
-                    <td data-label="Status">
+                    <td data-label={t('staff.status')}>
                       <StatusBadge student={student} soonDays={settings.expiringSoonDays} />
                     </td>
-                    <td className="nowrap" data-label="Paid until">
+                    <td className="nowrap" data-label={t('staff.paidUntil')}>
                       {info.expiry ? formatDate(info.expiry) : '—'}
                       {info.expiry && <span className="sub">{info.label}</span>}
                     </td>
-                    <td className="right" data-label="Total paid">
+                    <td className="right" data-label={t('staff.total')}>
                       {formatMoney(student.totalPaidCents, settings.currency)}
                     </td>
                     <td className="right actions-cell">
                       {student.status !== 'archived' && (
                         <button
                           type="button"
-                          className="btn btn-secondary btn-sm"
+                          className="btn btn-sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             setPaying(student);
                           }}
                         >
-                          + Payment
+                          {t('staff.payment')}
                         </button>
                       )}
                     </td>
@@ -189,32 +193,36 @@ export default function StaffDashboard() {
 
       <div className="card section">
         <div className="card-title">
-          <h2>Latest payments</h2>
+          <h2>{t('staff.latest')}</h2>
           <Link to="/staff/activity" className="btn btn-sm">
-            Full log
+            {t('staff.fullLog')}
           </Link>
         </div>
         {recent.data.length === 0 ? (
           <p className="muted small" style={{ margin: 0 }}>
-            No payments recorded yet.
+            {t('staff.noPayments')}
           </p>
         ) : (
           <ul className="timeline">
             {recent.data.map((p) => {
               const s = studentsById[p.studentId];
+              const amount = formatMoney(p.amountCents, p.currency || settings.currency);
               return (
                 <li key={p.id}>
                   <span className={`log-tag ${p.kind === 'payment' ? 't-pay' : 't-fix'}`} aria-hidden="true">
-                    {p.kind === 'payment' ? 'PAY' : 'FIX'}
+                    {t(`logTypes.${p.kind === 'payment' ? 'payment' : 'correction'}.tag`)}
                   </span>
                   <div>
                     <div>
-                      <strong>{formatMoney(p.amountCents, p.currency || settings.currency)}</strong>{' '}
-                      {p.kind === 'payment' ? `for ${p.months} month${p.months === 1 ? '' : 's'}` : 'correction'} —{' '}
-                      {s ? <Link to={`/staff/students/${s.id}`}>{fullName(s)}</Link> : 'unknown student'}
+                      <strong>
+                        {p.kind === 'payment'
+                          ? t('staff.latestPayment', { amount, months: t('time.months', { n: p.months }) })
+                          : t('staff.latestCorrection', { amount })}
+                      </strong>{' '}
+                      — {s ? <Link to={`/staff/students/${s.id}`}>{fullName(s)}</Link> : t('staff.unknownStudent')}
                     </div>
                     <div className="meta">
-                      {formatTimestamp(p.createdAt)} · by {p.createdByName} · paid until {formatDate(p.periodEnd)}
+                      {t('staff.latestMeta', { when: formatTimestamp(p.createdAt), by: p.createdByName, date: formatDate(p.periodEnd) })}
                     </div>
                   </div>
                 </li>

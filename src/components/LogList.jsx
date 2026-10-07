@@ -1,24 +1,30 @@
 import { Link } from 'react-router-dom';
 import { formatTimestamp } from '../lib/dates.js';
+import { useI18n } from '../i18n/I18nContext.jsx';
 import { RoleBadge } from './ui.jsx';
 
-export const LOG_TYPES = {
-  student_created: { tag: 'NEW', tone: 'new', label: 'Registered' },
-  student_updated: { tag: 'EDIT', tone: 'edit', label: 'Details edited' },
-  status_changed: { tag: 'ARC', tone: 'arc', label: 'Archived / re-activated' },
-  payment: { tag: 'PAY', tone: 'pay', label: 'Payment' },
-  correction: { tag: 'FIX', tone: 'fix', label: 'Correction' },
-  attendance: { tag: 'ATT', tone: 'att', label: 'Attendance' },
-  attendance_cleared: { tag: 'CLR', tone: 'clr', label: 'Attendance cleared' },
-  role_changed: { tag: 'ROLE', tone: 'role', label: 'Role change' },
-  settings_updated: { tag: 'CFG', tone: 'cfg', label: 'Settings' },
+// Colour of each type's tag. Tag text and label are translated: logTypes.<type>
+export const LOG_TONES = {
+  student_created: 'new',
+  student_updated: 'edit',
+  status_changed: 'arc',
+  payment: 'pay',
+  correction: 'fix',
+  attendance: 'att',
+  attendance_cleared: 'clr',
+  role_changed: 'role',
+  settings_updated: 'cfg',
 };
 
 export default function LogList({ logs, studentNames }) {
+  const { t } = useI18n();
   return (
     <ul className="timeline">
       {logs.map((log) => {
-        const type = LOG_TYPES[log.type] || { tag: 'LOG', tone: 'log', label: log.type };
+        const known = Boolean(LOG_TONES[log.type]);
+        const type = known
+          ? { tag: t(`logTypes.${log.type}.tag`), tone: LOG_TONES[log.type], label: t(`logTypes.${log.type}.label`) }
+          : { tag: 'LOG', tone: 'log', label: log.type };
         return (
           <li key={log.id}>
             <span className={`log-tag t-${type.tone}`} title={type.label}>
@@ -29,7 +35,7 @@ export default function LogList({ logs, studentNames }) {
               <div className="meta row" style={{ gap: '8px' }}>
                 <span>{formatTimestamp(log.createdAt)}</span>
                 <span>/</span>
-                <span>{log.actorName || 'Unknown'}</span>
+                <span>{log.actorName || t('logTypes.unknown')}</span>
                 <RoleBadge role={log.actorRole} />
                 {studentNames && log.studentId && studentNames[log.studentId] && (
                   <>

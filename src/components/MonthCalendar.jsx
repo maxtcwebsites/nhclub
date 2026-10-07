@@ -1,26 +1,27 @@
-import { addMonths, formatDate, monthGrid, todayStr } from '../lib/dates.js';
-
-const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+import { addMonths, formatDate, monthGrid, todayStr, weekdayNames } from '../lib/dates.js';
+import { useI18n } from '../i18n/I18nContext.jsx';
 
 // Generic month grid. `renderDay(date)` returns { className, content, onClick }.
 export default function MonthCalendar({ month, onMonthChange, renderDay, small = false, selected }) {
+  const { t } = useI18n();
   const today = todayStr();
+  const dow = weekdayNames(small ? 'narrow' : 'short');
   const weeks = monthGrid(month);
   return (
     <div className={small ? 'cal-small' : undefined}>
       <div className="cal-head">
-        <button type="button" className="cal-nav" onClick={() => onMonthChange(addMonths(month, -1))} aria-label="Previous month">
+        <button type="button" className="cal-nav" onClick={() => onMonthChange(addMonths(month, -1))} aria-label={t('calendar.prev')}>
           &lt;
         </button>
         <h3>{formatDate(month, { month: 'long', year: 'numeric' })}</h3>
-        <button type="button" className="cal-nav" onClick={() => onMonthChange(addMonths(month, 1))} aria-label="Next month">
+        <button type="button" className="cal-nav" onClick={() => onMonthChange(addMonths(month, 1))} aria-label={t('calendar.next')}>
           &gt;
         </button>
       </div>
       <div className="calendar" role="grid">
-        {DOW.map((d) => (
-          <div key={d} className="cal-dow" role="columnheader">
-            {small ? d[0] : d}
+        {dow.map((d, i) => (
+          <div key={i} className="cal-dow" role="columnheader">
+            {d}
           </div>
         ))}
         {weeks.flat().map((date, i) => {

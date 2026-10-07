@@ -39,6 +39,7 @@ import {
   updateStudentProfile,
 } from '../src/lib/api.js';
 import { periodEndFor } from '../src/lib/billing.js';
+import { tr } from '../src/i18n/index.js';
 
 const ADMIN = { uid: 'adminUid', email: 'r45t6er7@gmail.com', name: 'Club Owner', role: 'admin' };
 const TEACHER = { uid: 'teacherUid', email: 'teacher@example.com', name: 'Ms Teacher', role: 'teacher' };
@@ -530,7 +531,7 @@ describe('payments', () => {
   it('rejects bad payment values', async () => {
     const id = await newChild();
     // The app refuses these before they ever reach the server...
-    await expect(recordPayment(teacherDb(), TEACHER, id, { ...pay, amountCents: 0 })).rejects.toThrow(/amount/);
+    await expect(recordPayment(teacherDb(), TEACHER, id, { ...pay, amountCents: 0 })).rejects.toThrow(tr('pay.errAmount'));
     // ...and the rules refuse them too when the app is bypassed.
     for (const bad of [{ amountCents: 0 }, { amountCents: -500 }, { months: 0 }, { months: 99 }, { method: 'bitcoin' }]) {
       await assertFails(recordPaymentRaw(teacherDb(), TEACHER, id, { ...pay, ...bad }));

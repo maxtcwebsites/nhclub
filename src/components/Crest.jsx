@@ -1,7 +1,8 @@
 import { CREST_URL, PIECES, pieceStyle } from '../lib/crest.js';
+import { CLUB_NAME } from '../config.js';
 
 // The club crest. `split` renders it as three separate panels (for motion).
-export default function Crest({ split = false, className = '', label = 'Max TC crest' }) {
+export default function Crest({ split = false, className = '', label = `${CLUB_NAME}` }) {
   if (!split) return <img className={`crest-img ${className}`} src={CREST_URL} alt={label} draggable="false" />;
   return (
     <div className={`crest ${className}`} role="img" aria-label={label}>
@@ -15,7 +16,7 @@ export default function Crest({ split = false, className = '', label = 'Max TC c
 }
 
 // Loading motion graphic: the crest keeps taking itself apart and rebuilding.
-export function CrestLoader({ label = 'Loading', dark = false }) {
+export function CrestLoader({ label, dark = false }) {
   return (
     <div className={`loader ${dark ? 'loader-dark' : ''}`} role="status" aria-label={label}>
       <Crest split className="loader-crest" label="" />
@@ -23,7 +24,7 @@ export function CrestLoader({ label = 'Loading', dark = false }) {
         <span />
       </div>
       <div className="loader-text" aria-hidden="true">
-        {label.toUpperCase()}
+        {(label || '').toUpperCase()}
         <span className="loader-cursor" />
       </div>
     </div>

@@ -1,7 +1,14 @@
-# Max TC – parents & staff portal (Northhill)
+# AClub – parents & staff portal (Northhill)
 
-A website for Max TC in Northhill. Parents register their children and follow
+A website for AClub in Northhill. Parents register their children and follow
 their subscription, and club staff manage payments and attendance.
+
+The site is in **Spanish by default** and also available in **English**. Anyone
+can switch with the **ES / EN** buttons in the header. Signed-in users also
+have it under **Ajustes / Settings → Idioma / Language**. The choice is
+remembered on that device.
+
+Built by **Max TC**: the intro ends with that creator credit.
 
 The design is square and hard-edged: white background, orange as the main
 color, and the crest's red, blue and green for statuses. It's built with React + Vite on Firebase
@@ -13,8 +20,8 @@ color, and the crest's red, blue and green for statuses. It's built with React +
 * **Intro** (first visit in each browser session). The crest floats in three
   pieces until the visitor presses **ENTER**, because browsers only allow sound
   after a click. Then each piece slams into place on a beat, the drop hits,
-  and **Max TC** is typed out in a typewriter font. An orange shutter reveals
-  the site. **Skip** (or `Esc`) ends it at any time, and **Sound** (or `M`)
+  and the creator credit **Max TC** is typed out in a typewriter font. An
+  orange shutter reveals the site. The scrolling background text says AClub. **Skip** (or `Esc`) ends it at any time, and **Sound** (or `M`)
   mutes it. The **Replay intro** button in the footer plays it again.
 * **Music**: generated live in the browser with the Web Audio API
   ([`src/intro/sound.js`](src/intro/sound.js)), so there are no audio files and
@@ -28,8 +35,21 @@ color, and the crest's red, blue and green for statuses. It's built with React +
   without shakes, flashes or particles.
 * The crest lives in [`public/logo/`](public/logo) as the full logo plus its
   three cut-out panels. The panel positions are in
-  [`src/lib/crest.js`](src/lib/crest.js). The club name and location are set in
-  [`src/config.js`](src/config.js).
+  [`src/lib/crest.js`](src/lib/crest.js). The club name (AClub) and location
+  are set in [`src/config.js`](src/config.js). The creator credit is in
+  [`src/intro/sound.js`](src/intro/sound.js) (`CREDIT`).
+
+## Languages
+
+* The translations live in [`src/i18n/es.js`](src/i18n/es.js) (Spanish, the
+  default) and [`src/i18n/en.js`](src/i18n/en.js) (English). They have the same
+  keys, so to change any wording, edit both files.
+* Dates and amounts use the selected language's format. For example, Spanish
+  shows `11 oct 2026` and accepts `12,50` as an amount.
+* Firebase's emails (confirm your email, reset password) are sent in the
+  selected language too.
+* Activity-log entries are written in the language of the person who made the
+  change.
 
 ## What each account can do
 
@@ -87,7 +107,7 @@ Open <https://console.firebase.google.com/project/nhclub-1260c>.
    add **`maxtcwebsites.github.io`**. Without it, *Continue with Google*
    fails on the GitHub Pages site. Add your own domain too if you connect one.
 5. **Authentication → Templates**: set the sender name and the email text to
-   say "Max TC". Parents get these emails to confirm their
+   say "AClub". Parents get these emails to confirm their
    address and to reset their password.
 
 ## 2. Run it locally
@@ -267,6 +287,7 @@ firebase.json            Security headers / CSP, Firebase Hosting, emulators
 public/404.html          Redirects old-style links to the #/ address on GitHub Pages
 src/config.js            Super-admin email, club name, location, idle timeout
 src/intro/               Intro animation + generated soundtrack
+src/i18n/                Spanish (default) and English translations
 src/lib/crest.js         Crest panels (for the build-up animations)
 public/logo/             Crest artwork (full + three panels)
 public/boot.css          Loading screen shown before the app starts

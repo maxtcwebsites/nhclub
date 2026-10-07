@@ -1,6 +1,8 @@
 // Calendar dates are stored as local 'YYYY-MM-DD' strings so that a day means
 // the same thing for every user regardless of time zone.
 
+import { getLocale } from '../i18n/index.js';
+
 const pad = (n) => String(n).padStart(2, '0');
 
 export const DATE_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -48,13 +50,13 @@ export function diffDays(a, b) {
 
 export function formatDate(value, options = { month: 'short', day: 'numeric', year: 'numeric' }) {
   if (!isDateStr(value)) return '—';
-  return parseDateStr(value).toLocaleDateString(undefined, options);
+  return parseDateStr(value).toLocaleDateString(getLocale(), options);
 }
 
 export function formatTimestamp(ts) {
   if (!ts) return '…';
   const date = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString(getLocale(), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -96,4 +98,12 @@ export function monthGrid(value) {
 
 export function weekdayOf(value) {
   return parseDateStr(value).getDay();
+}
+
+// Localised weekday names starting on Monday ('short' or 'narrow').
+export function weekdayNames(style = 'short') {
+  const monday = new Date(2024, 0, 1); // a Monday
+  return Array.from({ length: 7 }, (_, i) =>
+    new Date(2024, 0, monday.getDate() + i).toLocaleDateString(getLocale(), { weekday: style }).replace('.', ''),
+  );
 }

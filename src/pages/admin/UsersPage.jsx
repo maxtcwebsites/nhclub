@@ -3,6 +3,7 @@ import { collection } from 'firebase/firestore';
 import { db } from '../../firebase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { useCollection } from '../../lib/useFirestore.js';
 import { setUserRole } from '../../lib/api.js';
 import { formatTimestamp } from '../../lib/dates.js';
@@ -12,6 +13,7 @@ import { ErrorAlert, Modal, RoleBadge, Spinner } from '../../components/ui.jsx';
 
 export default function UsersPage() {
   const { actor } = useAuth();
+  const { t } = useI18n();
   const toast = useToast();
   const users = useCollection(() => collection(db, 'users'), []);
   const students = useCollection(() => collection(db, 'students'), []);
@@ -40,7 +42,7 @@ export default function UsersPage() {
     setError('');
     try {
       await setUserRole(db, actor, confirm.user, confirm.role);
-      toast(confirm.role === 'teacher' ? `${confirm.user.displayName} is now a teacher` : `${confirm.user.displayName} is now a parent account`);
+      toast(t(confirm.role === 'teacher' ? 'users.madeTeacher' : 'users.madeParent', { name: confirm.user.displayName }));
       setConfirm(null);
     } catch (err) {
       setError(friendlyError(err));
@@ -53,27 +55,28 @@ export default function UsersPage() {
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">Super admin</div>
-          <h1>Users &amp; teachers</h1>
+          <div className="eyebrow">{t('users.eyebrow')}</div>
+          <h1>{t('users.title')}</h1>
           <p className="muted">
-            Everyone signs up as a parent. Promote a parent account to <strong>teacher</strong> to give it access to all students,
-            payments, attendance and logs.
+            {t('users.introBefore')}
+            <strong>{t('users.introStrong')}</strong>
+            {t('users.introAfter')}
           </p>
         </div>
       </div>
       <div className="toolbar">
         <div className="chips">
           {[
-            ['all', 'Everyone'],
-            ['teacher', 'Teachers'],
-            ['parent', 'Parents'],
+            ['all', t('users.everyone')],
+            ['teacher', t('users.teachers')],
+            ['parent', t('users.parents')],
           ].map(([key, label]) => (
             <button key={key} type="button" className={`chip ${role === key ? 'on' : ''}`} onClick={() => setRole(key)}>
               {label}
             </button>
           ))}
         </div>
-        <input type="search" placeholder="Search name, email, phone…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search users" />
+        <input type="search" placeholder={t('users.search')} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t('users.searchLabel')} />
       </div>
       <ErrorAlert error={users.error} />
       {users.loading ? (
@@ -83,13 +86,13 @@ export default function UsersPage() {
           <table className="stack-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Contact</th>
-                <th>Role</th>
-                <th>Children</th>
-                <th>Joined</th>
+                <th>{t('users.name')}</th>
+                <th>{t('users.contact')}</th>
+                <th>{t('users.role')}</th>
+                <th>{t('users.children')}</th>
+                <th>{t('users.joined')}</th>
                 <th>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{t('staff.actions')}</span>
                 </th>
               </tr>
             </thead>
@@ -99,27 +102,27 @@ export default function UsersPage() {
                   <td className="primary-cell">
                     <strong>{u.displayName}</strong>
                   </td>
-                  <td data-label="Contact">
+                  <td data-label={t('users.contact')}>
                     {u.email}
                     {u.phone && <span className="sub">{u.phone}</span>}
                   </td>
-                  <td data-label="Role">
+                  <td data-label={t('users.role')}>
                     <RoleBadge role={u.shownRole} />
                   </td>
-                  <td data-label="Children">{kids[u.id] || 0}</td>
-                  <td className="nowrap small" data-label="Joined">
+                  <td data-label={t('users.children')}>{kids[u.id] || 0}</td>
+                  <td className="nowrap small" data-label={t('users.joined')}>
                     {formatTimestamp(u.createdAt)}
                   </td>
                   <td className="right actions-cell">
                     {u.shownRole === 'admin' ? (
-                      <span className="muted small">Owner</span>
+                      <span className="muted small">{t('users.owner')}</span>
                     ) : u.role === 'teacher' ? (
                       <button type="button" className="btn btn-danger btn-sm" onClick={() => setConfirm({ user: u, role: 'parent' })}>
-                        Remove teacher
+                        {t('users.removeTeacher')}
                       </button>
                     ) : (
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setConfirm({ user: u, role: 'teacher' })}>
-                        Make teacher
+                      <button type="button" className="btn btn-sm" onClick={() => setConfirm({ user: u, role: 'teacher' })}>
+                        {t('users.makeTeacher')}
                       </button>
                     )}
                   </td>
@@ -131,22 +134,18 @@ export default function UsersPage() {
       )}
 
       {confirm && (
-        <Modal title={confirm.role === 'teacher' ? 'Make this account a teacher?' : 'Remove teacher access?'} onClose={() => setConfirm(null)}>
+        <Modal title={confirm.role === 'teacher' ? t('users.confirmMake') : t('users.confirmRemove')} onClose={() => setConfirm(null)}>
           <p>
             <strong>{confirm.user.displayName}</strong> ({confirm.user.email})
           </p>
-          <p className="muted">
-            {confirm.role === 'teacher'
-              ? 'Teachers can see every child and parent, record payments and corrections, take attendance and read the activity log. Only promote people you trust.'
-              : 'They will immediately lose access to the staff pages and go back to a normal parent account.'}
-          </p>
+          <p className="muted">{confirm.role === 'teacher' ? t('users.makeText') : t('users.removeText')}</p>
           <ErrorAlert error={error} />
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={() => setConfirm(null)}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="button" className={confirm.role === 'teacher' ? 'btn btn-primary' : 'btn btn-danger'} disabled={busy} onClick={apply}>
-              {busy ? 'Saving…' : confirm.role === 'teacher' ? 'Make teacher' : 'Remove access'}
+              {busy ? t('common.saving') : confirm.role === 'teacher' ? t('users.makeTeacher') : t('users.removeBtn')}
             </button>
           </div>
         </Modal>

@@ -1,7 +1,8 @@
 import { addDays, addMonths, diffDays } from './dates.js';
+import { getLocale, tr } from '../i18n/index.js';
 
 export const DEFAULT_SETTINGS = {
-  clubName: 'Max TC',
+  clubName: 'AClub',
   currency: '$',
   monthlyFeeCents: 0,
   absencePolicy: 'charge',
@@ -9,28 +10,11 @@ export const DEFAULT_SETTINGS = {
   clubDays: [1, 2, 3, 4, 5],
 };
 
-export const ABSENCE_POLICIES = {
-  charge: {
-    label: 'Absences are still charged',
-    help: 'Skipping a day does not change anything. The subscription runs on the calendar.',
-  },
-  excused: {
-    label: 'Excused absences extend the subscription',
-    help: 'Each day marked “Excused” while the subscription is active adds one free day.',
-  },
-  all: {
-    label: 'Every absence extends the subscription',
-    help: 'Each day marked “Absent” or “Excused” while the subscription is active adds one free day.',
-  },
-};
+// Labels live in the translation files: policy.<key>.label / .help
+export const ABSENCE_POLICY_KEYS = ['charge', 'excused', 'all'];
 
-export const PAYMENT_METHODS = {
-  cash: 'Cash',
-  card: 'Card',
-  bank_transfer: 'Bank transfer',
-  other: 'Other',
-  adjustment: 'Adjustment',
-};
+// Labels: method.<key>
+export const PAYMENT_METHOD_KEYS = ['cash', 'card', 'bank_transfer', 'other'];
 
 // Paid-until date including any absence credit days.
 export function effectiveExpiry(student) {
@@ -54,19 +38,17 @@ export function nextPeriodStart(student, today) {
 export function subscriptionInfo(student, today, soonDays = DEFAULT_SETTINGS.expiringSoonDays) {
   const expiry = effectiveExpiry(student);
   if (student?.status === 'archived') {
-    return { state: 'archived', label: 'Archived', expiry, daysLeft: null };
+    return { state: 'archived', label: tr('status.archived'), expiry, daysLeft: null };
   }
   if (!expiry) {
-    return { state: 'unpaid', label: 'Not paid yet', expiry: null, daysLeft: null };
+    return { state: 'unpaid', label: tr('status.unpaid'), expiry: null, daysLeft: null };
   }
   const daysLeft = diffDays(expiry, today);
   if (daysLeft < 0) {
-    const ago = -daysLeft;
-    return { state: 'expired', label: `Expired ${ago} day${ago === 1 ? '' : 's'} ago`, expiry, daysLeft };
+    return { state: 'expired', label: tr('time.expiredAgo', { n: -daysLeft }), expiry, daysLeft };
   }
-  if (daysLeft === 0) return { state: 'expiring', label: 'Last paid day today', expiry, daysLeft };
-  const label = `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`;
-  return { state: daysLeft <= soonDays ? 'expiring' : 'active', label, expiry, daysLeft };
+  if (daysLeft === 0) return { state: 'expiring', label: tr('time.lastDayToday'), expiry, daysLeft };
+  return { state: daysLeft <= soonDays ? 'expiring' : 'active', label: tr('time.daysLeft', { n: daysLeft }), expiry, daysLeft };
 }
 
 const STATE_ORDER = { expired: 0, expiring: 1, unpaid: 2, active: 3, archived: 4 };
@@ -104,21 +86,26 @@ export function resolveCredit({ status, date, previous, student, policy }) {
 
 export function formatMoney(cents, currency = DEFAULT_SETTINGS.currency) {
   const value = (cents || 0) / 100;
-  const abs = Math.abs(value).toLocaleString(undefined, {
+  const abs = Math.abs(value).toLocaleString(getLocale(), {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
   });
   return `${value < 0 ? '−' : ''}${currency}${abs}`;
 }
 
-// "12.5" -> 1250. Returns NaN for anything that is not a plain amount.
+// "12.5", "12,50", "1.234,50" or "1,234.50" -> cents. NaN if it is not a
+// plain amount. A comma followed by 1-2 digits at the end is a decimal comma.
 export function parseMoneyToCents(text) {
-  const clean = String(text ?? '').trim().replace(/,/g, '');
+  let clean = String(text ?? '').trim().replace(/\s/g, '');
+  if (/^-?\d{1,3}(\.\d{3})+,\d{1,2}$/.test(clean)) clean = clean.replace(/\./g, '').replace(',', '.');
+  else if (/^-?\d+,\d{1,2}$/.test(clean)) clean = clean.replace(',', '.');
+  else clean = clean.replace(/,/g, '');
   if (!/^-?\d{1,6}(\.\d{1,2})?$/.test(clean)) return NaN;
   return Math.round(Number(clean) * 100);
 }
 
 export function centsToInput(cents) {
   if (!cents) return '';
-  return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
+  const text = (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
+  return getLocale().startsWith('es') ? text.replace('.', ',') : text;
 }

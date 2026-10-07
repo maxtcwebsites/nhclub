@@ -1,12 +1,14 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { ErrorAlert, Spinner } from './ui.jsx';
+import { useI18n } from '../i18n/I18nContext.jsx';
 
 // UI routing only. The real protection is in firestore.rules: even if someone
 // forces their way to a page, the database refuses to hand over data.
 
 export function RequireAuth({ children }) {
   const { user, emailVerified, loading, profile, profileError } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
   if (user === undefined) return <Spinner />;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -20,7 +22,7 @@ export function RequireAuth({ children }) {
       </div>
     );
   }
-  if (loading || !profile) return <Spinner label="Loading your account…" />;
+  if (loading || !profile) return <Spinner label={t('common.loadingAccount')} />;
   return children;
 }
 

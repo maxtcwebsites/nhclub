@@ -1,5 +1,5 @@
 /* =========================================================================
-   Max TC — hard-edged, square, loud.
+   AClub — hard-edged, square, loud.
    ========================================================================= */
 
 :root {
@@ -282,9 +282,48 @@ p {
   transform: translateY(-7px) rotate(-45deg);
 }
 
+/* ES / EN switch */
+.lang-toggle {
+  display: inline-flex;
+  flex: none;
+  border: var(--b);
+  box-shadow: var(--shadow-sm);
+  background: var(--paper);
+}
+.lang-toggle button {
+  height: 32px;
+  min-width: 38px;
+  padding: 0 8px;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.lang-toggle button + button {
+  border-left: var(--b);
+}
+.lang-toggle button:hover:not(.on) {
+  background: var(--orange-soft);
+}
+.lang-toggle button.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+.header-lang {
+  margin-left: 12px;
+}
+
 @media (max-width: 960px) {
   .menu-toggle {
     display: block;
+    margin-left: 10px;
+  }
+  .header-lang {
+    margin-left: auto;
   }
   .nav {
     display: none;
@@ -2260,6 +2299,15 @@ button.cal-day:hover {
 }
 .intro-name.on {
   opacity: 1;
+}
+.intro-credit {
+  margin-bottom: 8px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--orange);
 }
 .intro-name-inner {
   position: relative;

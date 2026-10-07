@@ -4,11 +4,13 @@ import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } 
 import { auth, db } from '../../firebase.js';
 import { ensureUserProfile, signupInProgress, updateOwnProfile } from '../../lib/api.js';
 import { friendlyError, passwordProblems } from '../../lib/errors.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { ErrorAlert, Field } from '../../components/ui.jsx';
 import Crest from '../../components/Crest.jsx';
 import GoogleButton from './GoogleButton.jsx';
 
 export default function Signup() {
+  const { t } = useI18n();
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '', consent: false });
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState('');
@@ -17,11 +19,11 @@ export default function Signup() {
 
   const problems = passwordProblems(form.password);
   const errors = {
-    name: form.name.trim().length < 2 ? 'Please enter your full name.' : '',
-    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) ? '' : 'Please enter a valid email address.',
-    password: problems.length ? `Password needs ${problems.join(', ')}.` : '',
-    confirm: form.confirm !== form.password ? 'Passwords do not match.' : '',
-    consent: form.consent ? '' : 'Please confirm to continue.',
+    name: form.name.trim().length < 2 ? t('signup.nameReq') : '',
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) ? '' : t('signup.emailInvalid'),
+    password: problems.length ? t('signup.passwordNeeds', { list: problems.join(', ') }) : '',
+    confirm: form.confirm !== form.password ? t('signup.mismatch') : '',
+    consent: form.consent ? '' : t('signup.consentReq'),
   };
   const valid = Object.values(errors).every((v) => !v);
 
@@ -55,44 +57,48 @@ export default function Signup() {
     <div className="auth-wrap">
       <div className="card auth-card">
         <Crest className="crest-img" label="" />
-        <div className="eyebrow">New account</div>
-        <h1>Create a parent account</h1>
-        <p className="muted">Register once, then add each of your children.</p>
+        <div className="eyebrow">{t('signup.eyebrow')}</div>
+        <h1>{t('signup.title')}</h1>
+        <p className="muted">{t('signup.subtitle')}</p>
         <form className="form" onSubmit={submit} noValidate>
           <ErrorAlert error={error} />
-          <Field label="Your full name" required error={show('name')}>
+          <Field label={t('signup.name')} required error={show('name')}>
             {(id) => <input id={id} type="text" autoComplete="name" maxLength={80} value={form.name} onChange={set('name')} />}
           </Field>
-          <Field label="Email" required error={show('email')} hint="We’ll send a link to confirm it.">
+          <Field label={t('auth.email')} required error={show('email')} hint={t('signup.emailHint')}>
             {(id) => <input id={id} type="email" autoComplete="email" maxLength={254} value={form.email} onChange={set('email')} />}
           </Field>
-          <Field label="Phone number" hint="So the club can reach you about your child.">
+          <Field label={t('signup.phone')} hint={t('signup.phoneHint')}>
             {(id) => <input id={id} type="tel" autoComplete="tel" maxLength={30} value={form.phone} onChange={set('phone')} />}
           </Field>
-          <Field label="Password" required error={show('password')} hint="At least 8 characters, with letters and numbers.">
+          <Field label={t('auth.password')} required error={show('password')} hint={t('signup.passwordHint')}>
             {(id) => (
-              <input id={id} type="password" autoComplete="new-password" value={form.password} onChange={set('password')} aria-invalid={Boolean(show('password'))} />
+              <input
+                id={id}
+                type="password"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={set('password')}
+                aria-invalid={Boolean(show('password'))}
+              />
             )}
           </Field>
-          <Field label="Confirm password" required error={show('confirm')}>
+          <Field label={t('signup.confirm')} required error={show('confirm')}>
             {(id) => <input id={id} type="password" autoComplete="new-password" value={form.confirm} onChange={set('confirm')} />}
           </Field>
           <label className="check small">
             <input type="checkbox" checked={form.consent} onChange={set('consent')} />
-            <span>
-              I am the parent or legal guardian of the children I register, and I agree that the club stores their details to run
-              the club.
-            </span>
+            <span>{t('signup.consent')}</span>
           </label>
           {show('consent') && <span className="error-text small">{show('consent')}</span>}
           <button className="btn btn-primary btn-block btn-lg" disabled={busy}>
-            {busy ? 'Creating account…' : 'Create account'}
+            {busy ? t('signup.submitting') : t('signup.submit')}
           </button>
-          <div className="divider">or</div>
-          <GoogleButton label="Sign up with Google" onError={setError} />
+          <div className="divider">{t('auth.or')}</div>
+          <GoogleButton label={t('signup.google')} onError={setError} />
         </form>
-        <p className="small muted" style={{ marginTop: '1.25rem', marginBottom: 0 }}>
-          Already have an account? <Link to="/login">Sign in</Link>
+        <p className="small muted" style={{ marginTop: 20, marginBottom: 0 }}>
+          {t('signup.haveAccount')} <Link to="/login">{t('signup.signInLink')}</Link>
         </p>
       </div>
     </div>

@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PIECES, pieceStyle } from '../lib/crest.js';
-import { createSoundEngine, KICKS, NAME, playScore, SNARES, TIMELINE as T } from './sound.js';
+import { createSoundEngine, CREDIT, KICKS, playScore, SNARES, TIMELINE as T } from './sound.js';
+import { useI18n } from '../i18n/I18nContext.jsx';
+import { CLUB_NAME, LOCATION_NAME } from '../config.js';
 
 // The intro: the crest floats in pieces until ENTER is pressed (browsers only
 // allow sound after a click), then it is slammed together on the beat, the
-// drop hits, "Max TC" is typed out, and an orange shutter reveals the site.
+// drop hits, the creator credit "Max TC" is typed out, and an orange shutter
+// reveals the site.
 
 const BLOCKS = 7;
 const COVER = 0.3; // seconds for one shutter block to close
@@ -21,6 +24,7 @@ function apart(p, k, jx = 0, jy = 0, sx = 1, sy = sx) {
 
 export default function IntroOverlay({ onDone }) {
   const [phase, setPhase] = useState('gate'); // gate | playing | leaving
+  const { t } = useI18n();
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
   const [muted, setMuted] = useState(false);
@@ -293,7 +297,7 @@ export default function IntroOverlay({ onDone }) {
       at(T.lift + 0.2, () => nameEl.current?.classList.add('on'));
 
       // 6. Typewriter.
-      [...NAME].forEach((ch, i) => {
+      [...CREDIT].forEach((ch, i) => {
         const time = T.typeStart + i * T.typeStep;
         play(
           letterEls.current[i],
@@ -443,10 +447,10 @@ export default function IntroOverlay({ onDone }) {
     };
   }, []);
 
-  const marquee = 'MAX TC /// '.repeat(10);
+  const marquee = `${CLUB_NAME} /// `.repeat(10);
 
   return (
-    <div ref={root} className={`intro is-${phase}`} role="dialog" aria-modal="true" aria-label={`${NAME} intro`}>
+    <div ref={root} className={`intro is-${phase}`} role="dialog" aria-modal="true" aria-label={t('intro.label', { name: CLUB_NAME })}>
       <div className="intro-bg" aria-hidden="true" />
       <div className="intro-marquee" aria-hidden="true">
         <div className="row">
@@ -481,8 +485,9 @@ export default function IntroOverlay({ onDone }) {
             <span className="intro-shock alt" ref={(el) => (shocks.current[1] = el)} />
           </div>
           <div className="intro-name" ref={nameEl}>
-            <div className="intro-name-inner" ref={nameInner}>
-              {[...NAME].map((ch, i) => (
+            <div className="intro-credit">{t('intro.credit')}</div>
+            <div className="intro-name-inner" ref={nameInner} aria-label={CREDIT}>
+              {[...CREDIT].map((ch, i) => (
                 <span key={i} ref={(el) => (letterEls.current[i] = el)} className="intro-letter">
                   {ch === ' ' ? ' ' : ch}
                 </span>
@@ -503,15 +508,17 @@ export default function IntroOverlay({ onDone }) {
         <span className="hud-corner tr" />
         <span className="hud-corner bl" />
         <span className="hud-corner br" />
-        <div className="hud-label hud-top-left">Northhill</div>
+        <div className="hud-label hud-top-left">
+          {CLUB_NAME} / {LOCATION_NAME}
+        </div>
         <div className="hud-label hud-top-right">
           <span className="hud-rec" /> REC <span ref={timecode}>00:00:00:00</span>
         </div>
         <button type="button" className="hud-btn hud-sound" onClick={toggleMute} aria-pressed={!muted}>
-          Sound: {muted ? 'off' : 'on'}
+          {muted ? t('intro.soundOff') : t('intro.soundOn')}
         </button>
         <button type="button" className="hud-btn hud-skip" onClick={skip}>
-          Skip
+          {t('intro.skip')}
         </button>
       </div>
 
@@ -519,9 +526,9 @@ export default function IntroOverlay({ onDone }) {
         <div className="intro-gate">
           {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
           <button type="button" className="intro-enter" onClick={start} autoFocus>
-            Enter
+            {t('intro.enter')}
           </button>
-          <p className="intro-hint">Turn your sound on</p>
+          <p className="intro-hint">{t('intro.hint')}</p>
         </div>
       )}
 

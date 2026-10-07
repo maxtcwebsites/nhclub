@@ -5,8 +5,9 @@ import { db } from '../../firebase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { useCollection, useDocument } from '../../lib/useFirestore.js';
-import { ATTENDANCE_LABELS, clearAttendance, setAttendance, setStudentStatus } from '../../lib/api.js';
+import { ATTENDANCE_STATUSES, clearAttendance, setAttendance, setStudentStatus } from '../../lib/api.js';
 import { formatMoney, fullName } from '../../lib/billing.js';
 import { ageFrom, formatDate, monthStart, todayStr, weekdayOf } from '../../lib/dates.js';
 import { friendlyError } from '../../lib/errors.js';
@@ -19,6 +20,7 @@ import LogList from '../../components/LogList.jsx';
 export default function StudentDetail() {
   const { studentId } = useParams();
   const { settings } = useSettings();
+  const { t } = useI18n();
   const [tab, setTab] = useState('overview');
   const [modal, setModal] = useState(null);
 
@@ -32,8 +34,8 @@ export default function StudentDetail() {
   if (error || !student) {
     return (
       <div className="card">
-        <Empty code="404" title="Student not found">
-          <Link to="/staff">Back to the dashboard</Link>
+        <Empty code="404" title={t('student.notFound')}>
+          <Link to="/staff">{t('student.backDash')}</Link>
         </Empty>
       </div>
     );
@@ -46,25 +48,25 @@ export default function StudentDetail() {
     counts[a.status] += 1;
   });
   const tabs = [
-    ['overview', 'Overview'],
-    ['payments', `Payments (${payments.data.length})`],
-    ['attendance', 'Attendance'],
-    ['log', `Activity log (${logs.data.length})`],
+    ['overview', t('student.overview')],
+    ['payments', t('student.paymentsTab', { n: payments.data.length })],
+    ['attendance', t('student.attendanceTab')],
+    ['log', t('student.logTab', { n: logs.data.length })],
   ];
 
   return (
     <>
       <Link to="/staff" className="back-link">
-        &lt;&lt; All students
+        {t('student.back')}
       </Link>
       <div className="page-head">
         <div className="row">
           <div className="avatar lg">{initials(student.firstName, student.lastName)}</div>
           <div>
-            <h1 style={{ marginBottom: '0.2rem' }}>{fullName(student)}</h1>
+            <h1 style={{ marginBottom: 6 }}>{fullName(student)}</h1>
             <div className="row">
               <StatusBadge student={student} soonDays={settings.expiringSoonDays} />
-              {age !== null && <span className="muted small mono">{age} yrs</span>}
+              {age !== null && <span className="muted small mono">{t('common.years', { n: age })}</span>}
               {student.grade && <span className="muted small mono">/ {student.grade}</span>}
             </div>
           </div>
@@ -72,24 +74,24 @@ export default function StudentDetail() {
         <div className="row">
           {!archived && (
             <button type="button" className="btn btn-primary" onClick={() => setModal('payment')}>
-              + Record payment
+              {t('student.record')}
             </button>
           )}
-          <button type="button" className="btn btn-secondary" onClick={() => setModal('correction')}>
-            Correction
+          <button type="button" className="btn" onClick={() => setModal('correction')}>
+            {t('student.correction')}
           </button>
           <Link to={`/staff/students/${studentId}/edit`} className="btn">
-            Edit
+            {t('common.edit')}
           </Link>
-          <button type="button" className={archived ? 'btn btn-secondary' : 'btn btn-danger'} onClick={() => setModal('status')}>
-            {archived ? 'Re-activate' : 'Archive'}
+          <button type="button" className={archived ? 'btn' : 'btn btn-danger'} onClick={() => setModal('status')}>
+            {archived ? t('student.reactivate') : t('student.archive')}
           </button>
         </div>
       </div>
 
       {student.allergies && (
         <div className="alert alert-warn" style={{ marginBottom: 20 }}>
-          <strong className="mono">ALLERGIES:</strong> {student.allergies}
+          <strong className="mono">{t('student.allergies')}</strong> {student.allergies}
         </div>
       )}
 
@@ -97,25 +99,19 @@ export default function StudentDetail() {
 
       <div className="grid grid-4 stagger" style={{ margin: '28px 0' }}>
         <div className="card stat">
-          <div className="label">Total paid</div>
-          <div className="value">
-            {formatMoney(student.totalPaidCents, settings.currency)}
-          </div>
+          <div className="label">{t('student.totalPaid')}</div>
+          <div className="value">{formatMoney(student.totalPaidCents, settings.currency)}</div>
         </div>
         <div className="card stat">
-          <div className="label">Months paid</div>
-          <div className="value">
-            {student.monthsPaid}
-          </div>
+          <div className="label">{t('student.monthsPaid')}</div>
+          <div className="value">{student.monthsPaid}</div>
         </div>
         <div className="card stat">
-          <div className="label">Days present</div>
-          <div className="value">
-            {counts.present}
-          </div>
+          <div className="label">{t('student.daysPresent')}</div>
+          <div className="value">{counts.present}</div>
         </div>
         <div className="card stat">
-          <div className="label">Absent / excused</div>
+          <div className="label">{t('student.absentExcused')}</div>
           <div className="value">
             {counts.absent} / {counts.excused}
           </div>
@@ -134,15 +130,15 @@ export default function StudentDetail() {
         <div className="grid grid-2">
           <div className="card">
             <div className="card-title">
-              <h2>Child &amp; family</h2>
+              <h2>{t('student.childFamily')}</h2>
             </div>
             <ChildDetails student={student} parent={parent.data} />
           </div>
           <div className="card">
             <div className="card-title">
-              <h2>Recent activity</h2>
+              <h2>{t('student.recent')}</h2>
               <button type="button" className="link small" onClick={() => setTab('log')}>
-                See all
+                {t('student.seeAll')}
               </button>
             </div>
             <LogList logs={sortNewestFirst(logs.data).slice(0, 6)} />
@@ -161,9 +157,9 @@ export default function StudentDetail() {
 
       {tab === 'log' && (
         <div className="card">
-          <p className="small muted">Every change to this student, who made it and when. Entries can never be edited or deleted.</p>
+          <p className="small muted">{t('student.logIntro')}</p>
           <ErrorAlert error={logs.error} />
-          {logs.data.length === 0 ? <p className="muted">No activity yet.</p> : <LogList logs={sortNewestFirst(logs.data)} />}
+          {logs.data.length === 0 ? <p className="muted">{t('student.noActivity')}</p> : <LogList logs={sortNewestFirst(logs.data)} />}
         </div>
       )}
 
@@ -176,13 +172,17 @@ export default function StudentDetail() {
 
 function StatusModal({ student, onClose }) {
   const { actor } = useAuth();
+  const { t } = useI18n();
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const archiving = student.status !== 'archived';
   return (
-    <Modal title={archiving ? `Archive ${student.firstName}?` : `Re-activate ${student.firstName}?`} onClose={onClose}>
+    <Modal
+      title={archiving ? t('student.archiveTitle', { name: student.firstName }) : t('student.reactivateTitle', { name: student.firstName })}
+      onClose={onClose}
+    >
       <form
         className="form"
         onSubmit={async (e) => {
@@ -191,7 +191,7 @@ function StatusModal({ student, onClose }) {
           setError('');
           try {
             await setStudentStatus(db, actor, student, archiving ? 'archived' : 'active', reason.trim());
-            toast(archiving ? 'Student archived' : 'Student re-activated');
+            toast(archiving ? t('student.archived') : t('student.reactivated'));
             onClose();
           } catch (err) {
             setError(friendlyError(err));
@@ -200,21 +200,19 @@ function StatusModal({ student, onClose }) {
         }}
       >
         <p className="muted" style={{ margin: 0 }}>
-          {archiving
-            ? 'Archived students are hidden from attendance and the main list. Their payments and history are kept.'
-            : 'The student will show up in the main list and in attendance again.'}
+          {archiving ? t('student.archiveText') : t('student.reactivateText')}
         </p>
         <ErrorAlert error={error} />
         <div className="field">
-          <label htmlFor="status-reason">Reason (optional)</label>
+          <label htmlFor="status-reason">{t('student.reason')}</label>
           <input id="status-reason" type="text" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} />
         </div>
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button className={archiving ? 'btn btn-danger' : 'btn btn-primary'} disabled={busy}>
-            {busy ? 'Saving…' : archiving ? 'Archive' : 'Re-activate'}
+            {busy ? t('common.saving') : archiving ? t('student.archive') : t('student.reactivate')}
           </button>
         </div>
       </form>
@@ -224,12 +222,13 @@ function StatusModal({ student, onClose }) {
 
 function StudentAttendance({ student, records }) {
   const { settings } = useSettings();
+  const { t } = useI18n();
   const [month, setMonth] = useState(monthStart(todayStr()));
   const [day, setDay] = useState(null);
   const byDate = Object.fromEntries(records.map((r) => [r.date, r]));
   return (
     <div className="card">
-      <p className="small muted">Click a day to mark or change attendance for {student.firstName}.</p>
+      <p className="small muted">{t('student.attHint', { name: student.firstName })}</p>
       <MonthCalendar
         month={month}
         onMonthChange={setMonth}
@@ -238,11 +237,11 @@ function StudentAttendance({ student, records }) {
           const off = !settings.clubDays.includes(weekdayOf(date));
           return {
             className: r ? r.status : off ? 'off' : '',
-            label: r ? `${ATTENDANCE_LABELS[r.status]}${r.note ? ` — ${r.note}` : ''}` : undefined,
+            label: r ? `${t(`att.${r.status}`)}${r.note ? ` — ${r.note}` : ''}` : undefined,
             content: r ? (
               <>
-                <span className="tag">{ATTENDANCE_LABELS[r.status]}</span>
-                {r.credited && <span className="tag">+1 day</span>}
+                <span className="tag">{t(`att.${r.status}`)}</span>
+                {r.credited && <span className="tag">{t('student.plusDay')}</span>}
               </>
             ) : null,
             onClick: () => setDay(date),
@@ -257,6 +256,7 @@ function StudentAttendance({ student, records }) {
 function AttendanceDayModal({ student, date, record, onClose }) {
   const { actor } = useAuth();
   const { settings } = useSettings();
+  const { t } = useI18n();
   const toast = useToast();
   const [status, setStatus] = useState(record?.status || 'present');
   const [note, setNote] = useState(record?.note || '');
@@ -268,7 +268,7 @@ function AttendanceDayModal({ student, date, record, onClose }) {
     setError('');
     try {
       await action();
-      toast('Attendance saved');
+      toast(t('student.attSaved'));
       onClose();
     } catch (err) {
       setError(friendlyError(err));
@@ -286,29 +286,29 @@ function AttendanceDayModal({ student, date, record, onClose }) {
         }}
       >
         <ErrorAlert error={error} />
-        <div className="seg" role="radiogroup" aria-label="Attendance">
-          {Object.entries(ATTENDANCE_LABELS).map(([key, label]) => (
+        <div className="seg" role="radiogroup" aria-label={t('student.attendanceTab')}>
+          {ATTENDANCE_STATUSES.map((key) => (
             <button key={key} type="button" role="radio" aria-checked={status === key} className={status === key ? `on-${key}` : ''} onClick={() => setStatus(key)}>
-              {label}
+              {t(`att.${key}`)}
             </button>
           ))}
         </div>
         <div className="field">
-          <label htmlFor="att-note">Note (visible to the parent)</label>
+          <label htmlFor="att-note">{t('student.noteLabel')}</label>
           <input id="att-note" type="text" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
-        {record?.credited && <p className="small muted">This day added one free day to the subscription.</p>}
+        {record?.credited && <p className="small muted">{t('student.creditedNote')}</p>}
         <div className="modal-actions">
           {record && (
             <button type="button" className="btn btn-danger" disabled={busy} onClick={() => run(() => clearAttendance(db, actor, student.id, date))}>
-              Clear
+              {t('student.clear')}
             </button>
           )}
           <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button className="btn btn-primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save'}
+            {busy ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </form>

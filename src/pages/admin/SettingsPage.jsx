@@ -3,25 +3,22 @@ import { db } from '../../firebase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { saveSettings } from '../../lib/api.js';
-import { ABSENCE_POLICIES, centsToInput, parseMoneyToCents } from '../../lib/billing.js';
+import { ABSENCE_POLICY_KEYS, centsToInput, parseMoneyToCents } from '../../lib/billing.js';
+import { weekdayNames } from '../../lib/dates.js';
 import { friendlyError } from '../../lib/errors.js';
 import { ErrorAlert, Field, Spinner } from '../../components/ui.jsx';
 import { CLUB_NAME } from '../../config.js';
 
-const DAYS = [
-  [1, 'Mon'],
-  [2, 'Tue'],
-  [3, 'Wed'],
-  [4, 'Thu'],
-  [5, 'Fri'],
-  [6, 'Sat'],
-  [0, 'Sun'],
-];
+// Club day numbers in Monday-first order (0 = Sunday).
+const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0];
 
+// Club-wide settings (super admin only).
 export default function SettingsPage() {
   const { actor } = useAuth();
   const { settings, saved, loaded } = useSettings();
+  const { t } = useI18n();
   const toast = useToast();
   const [form, setForm] = useState(null);
   const [error, setError] = useState('');
@@ -33,17 +30,16 @@ export default function SettingsPage() {
 
   if (!form) return <Spinner />;
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const dayNames = weekdayNames('short');
 
   async function submit(e) {
     e.preventDefault();
     setError('');
     const monthlyFeeCents = parseMoneyToCents(form.fee);
     const expiringSoonDays = Number(form.expiringSoonDays);
-    if (!form.currency.trim()) return setError('Enter a currency symbol, e.g. $ or €.');
-    if (!Number.isInteger(monthlyFeeCents) || monthlyFeeCents < 0) return setError('Enter a valid monthly fee (0 or more).');
-    if (!Number.isInteger(expiringSoonDays) || expiringSoonDays < 1 || expiringSoonDays > 60) {
-      return setError('“Expiring soon” must be between 1 and 60 days.');
-    }
+    if (!form.currency.trim()) return setError(t('club.errCurrency'));
+    if (!Number.isInteger(monthlyFeeCents) || monthlyFeeCents < 0) return setError(t('club.errFee'));
+    if (!Number.isInteger(expiringSoonDays) || expiringSoonDays < 1 || expiringSoonDays > 60) return setError(t('club.errSoon'));
     setBusy(true);
     try {
       await saveSettings(db, actor, {
@@ -54,7 +50,7 @@ export default function SettingsPage() {
         expiringSoonDays,
         clubDays: form.clubDays,
       });
-      toast('Settings saved');
+      toast(t('club.saved'));
     } catch (err) {
       setError(friendlyError(err));
     } finally {
@@ -66,37 +62,37 @@ export default function SettingsPage() {
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
       <div className="page-head">
         <div>
-          <div className="eyebrow">Super admin</div>
-          <h1>Club settings</h1>
-          <p className="muted">Only you can change these. Every change is recorded in the activity log.</p>
+          <div className="eyebrow">{t('club.eyebrow')}</div>
+          <h1>{t('club.title')}</h1>
+          <p className="muted">{t('club.subtitle')}</p>
         </div>
       </div>
       {!saved && (
-        <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
-          Settings have not been saved yet — the defaults below are in use. Review them and press Save.
+        <div className="alert alert-info" style={{ marginBottom: 16 }}>
+          {t('club.notSaved')}
         </div>
       )}
-      <form className="stack" onSubmit={submit}>
+      <form className="stack stagger" onSubmit={submit}>
         <ErrorAlert error={error} />
         <div className="card form">
           <div className="card-title">
-            <h2>General</h2>
+            <h2>{t('club.general')}</h2>
           </div>
           <div className="grid grid-2">
-            <Field label="Currency symbol" required hint="Shown next to amounts, e.g. $, €, £.">
+            <Field label={t('club.currency')} required hint={t('club.currencyHint')}>
               {(id) => <input id={id} type="text" maxLength={5} value={form.currency} onChange={set('currency')} />}
             </Field>
-            <Field label="Monthly fee" hint="Pre-fills the amount when recording a payment.">
+            <Field label={t('club.fee')} hint={t('club.feeHint')}>
               {(id) => <input id={id} type="text" inputMode="decimal" value={form.fee} onChange={set('fee')} />}
             </Field>
-            <Field label="“Expiring soon” warning" hint="Days before the end of a subscription.">
+            <Field label={t('club.soon')} hint={t('club.soonHint')}>
               {(id) => <input id={id} type="number" min={1} max={60} value={form.expiringSoonDays} onChange={set('expiringSoonDays')} />}
             </Field>
           </div>
           <div className="field">
-            <span className="label">Club days</span>
+            <span className="label">{t('club.clubDays')}</span>
             <div className="chips">
-              {DAYS.map(([d, label]) => {
+              {DAY_NUMBERS.map((d, i) => {
                 const on = form.clubDays.includes(d);
                 return (
                   <button
@@ -108,34 +104,30 @@ export default function SettingsPage() {
                       setForm((f) => ({ ...f, clubDays: on ? f.clubDays.filter((x) => x !== d) : [...f.clubDays, d] }))
                     }
                   >
-                    {label}
+                    {dayNames[i]}
                   </button>
                 );
               })}
             </div>
-            <span className="hint">Other days are greyed out on the attendance calendar.</span>
+            <span className="hint">{t('club.clubDaysHint')}</span>
           </div>
         </div>
 
         <div className="card form">
           <div className="card-title">
-            <h2>Absences &amp; payments</h2>
+            <h2>{t('club.absences')}</h2>
           </div>
-          <div>
-            <p className="muted small" style={{ margin: 0 }}>
-              Does skipping a day mean the family does not have to pay for it? Choose how absences affect a paid subscription. A
-              credited day only counts while the subscription is active, and changing this setting never removes days that were
-              already credited.
-            </p>
-          </div>
-          {Object.entries(ABSENCE_POLICIES).map(([key, p]) => (
+          <p className="muted small" style={{ margin: 0 }}>
+            {t('club.absencesIntro')}
+          </p>
+          {ABSENCE_POLICY_KEYS.map((key) => (
             <label key={key} className="option-card">
               <input type="radio" name="absencePolicy" value={key} checked={form.absencePolicy === key} onChange={set('absencePolicy')} />
               <span>
-                <strong>{p.label}</strong>
-                {key === 'charge' && <span className="tag">Default</span>}
+                <strong>{t(`policy.${key}.label`)}</strong>
+                {key === 'charge' && <span className="tag">{t('club.default')}</span>}
                 <span className="muted small" style={{ display: 'block' }}>
-                  {p.help}
+                  {t(`policy.${key}.help`)}
                 </span>
               </span>
             </label>
@@ -144,7 +136,7 @@ export default function SettingsPage() {
 
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button className="btn btn-primary btn-lg" disabled={busy}>
-            {busy ? 'Saving…' : 'Save settings'}
+            {busy ? t('common.saving') : t('club.save')}
           </button>
         </div>
       </form>

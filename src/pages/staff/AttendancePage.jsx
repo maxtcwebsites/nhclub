@@ -6,8 +6,9 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useCollection } from '../../lib/useFirestore.js';
-import { ATTENDANCE_LABELS, clearAttendance, setAttendance } from '../../lib/api.js';
-import { ABSENCE_POLICIES, fullName, subscriptionInfo } from '../../lib/billing.js';
+import { ATTENDANCE_STATUSES, clearAttendance, setAttendance } from '../../lib/api.js';
+import { fullName, subscriptionInfo } from '../../lib/billing.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { formatDate, monthEnd, monthStart, todayStr, weekdayOf } from '../../lib/dates.js';
 import { friendlyError } from '../../lib/errors.js';
 import { Empty, ErrorAlert, Spinner, StatusBadge } from '../../components/ui.jsx';
@@ -16,6 +17,7 @@ import MonthCalendar from '../../components/MonthCalendar.jsx';
 export default function AttendancePage() {
   const { settings } = useSettings();
   const { actor } = useAuth();
+  const { t } = useI18n();
   const toast = useToast();
   const today = todayStr();
   const [month, setMonth] = useState(monthStart(today));
@@ -67,22 +69,22 @@ export default function AttendancePage() {
       setBulk({ done: i + 1, total: unmarked.length });
     }
     setBulk(null);
-    toast(failed ? `${failed} could not be saved — please retry.` : 'Everyone marked present', failed ? 'error' : 'success');
+    toast(failed ? t('attendance.bulkFailed', { n: failed }) : t('attendance.bulkDone'), failed ? 'error' : 'success');
   }
 
   return (
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">Attendance</div>
-          <h1>Attendance calendar</h1>
-          <p className="muted">Pick a day, then mark each child. Notes are visible to the child’s parent.</p>
+          <div className="eyebrow">{t('attendance.eyebrow')}</div>
+          <h1>{t('attendance.title')}</h1>
+          <p className="muted">{t('attendance.subtitle')}</p>
         </div>
       </div>
 
-      <div className="alert alert-info" style={{ marginBottom: '1.25rem' }}>
-        Absence policy: <strong>{ABSENCE_POLICIES[settings.absencePolicy]?.label}</strong>.{' '}
-        <span style={{ fontWeight: 600 }}>{ABSENCE_POLICIES[settings.absencePolicy]?.help}</span>
+      <div className="alert alert-info" style={{ marginBottom: 20 }}>
+        {t('attendance.policy')} <strong>{t(`policy.${settings.absencePolicy}.label`)}</strong>.{' '}
+        {t(`policy.${settings.absencePolicy}.help`)}
       </div>
 
       <ErrorAlert error={students.error || records.error} />
@@ -99,7 +101,7 @@ export default function AttendancePage() {
               return {
                 className: off ? 'off' : '',
                 onClick: () => setSelected(date),
-                label: c ? `${c.present} present, ${c.absent} absent, ${c.excused} excused` : undefined,
+                label: c ? t('attendance.dayLabel', { p: c.present, a: c.absent, e: c.excused }) : undefined,
                 content: c ? (
                   <span className="counts">
                     {c.present > 0 && <span className="c-present">{c.present}</span>}
@@ -111,15 +113,11 @@ export default function AttendancePage() {
             }}
           />
           <div className="legend">
-            <span>
-              <i className="c-present" /> Present
-            </span>
-            <span>
-              <i className="c-absent" /> Absent
-            </span>
-            <span>
-              <i className="c-excused" /> Excused
-            </span>
+            {ATTENDANCE_STATUSES.map((k) => (
+              <span key={k}>
+                <i className={`c-${k}`} /> {t(`att.${k}`)}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -128,25 +126,29 @@ export default function AttendancePage() {
             <div>
               <h2>{formatDate(selected, { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
               <div className="small muted">
-                {tally.present} present · {tally.absent} absent · {tally.excused} excused · {unmarked.length} not marked
+                {t('attendance.tally', { p: tally.present, a: tally.absent, e: tally.excused, u: unmarked.length })}
               </div>
             </div>
             {unmarked.length > 0 && (
-              <button type="button" className="btn btn-secondary btn-sm" disabled={Boolean(bulk)} onClick={markAllPresent}>
-                {bulk ? `Saving ${bulk.done}/${bulk.total}…` : `Mark ${unmarked.length} present`}
+              <button type="button" className="btn btn-sm" disabled={Boolean(bulk)} onClick={markAllPresent}>
+                {bulk ? t('attendance.savingBulk', { done: bulk.done, total: bulk.total }) : t('attendance.markAll', { n: unmarked.length })}
               </button>
             )}
           </div>
-          {!isClubDay && <div className="alert alert-warn small" style={{ marginBottom: '0.75rem' }}>This is not a regular club day.</div>}
+          {!isClubDay && (
+            <div className="alert alert-warn small" style={{ marginBottom: 12 }}>
+              {t('attendance.notClubDay')}
+            </div>
+          )}
           {selected > today && (
-            <div className="alert alert-info small" style={{ marginBottom: '0.75rem' }}>
-              This day is in the future — useful for planned absences.
+            <div className="alert alert-info small" style={{ marginBottom: 12 }}>
+              {t('attendance.future')}
             </div>
           )}
           {students.loading ? (
             <Spinner />
           ) : roster.length === 0 ? (
-            <Empty code="NO STUDENTS" title="No enrolled students yet" />
+            <Empty code={t('attendance.emptyCode')} title={t('attendance.noStudents')} />
           ) : (
             <div className="roster">
               {roster.map((s) => (
@@ -163,6 +165,7 @@ export default function AttendancePage() {
 function RosterRow({ student, record, date }) {
   const { actor } = useAuth();
   const { settings } = useSettings();
+  const { t } = useI18n();
   const toast = useToast();
   const [note, setNote] = useState(record?.note ?? '');
   const [focused, setFocused] = useState(false);
@@ -218,13 +221,13 @@ function RosterRow({ student, record, date }) {
         </strong>
         <div className="meta-line">
           <StatusBadge student={student} soonDays={settings.expiringSoonDays} />
-          {(info.state === 'expired' || info.state === 'unpaid') && <span className="muted">needs payment</span>}
-          {record?.credited && status && status !== 'present' && <span className="muted">+1 day</span>}
-          {pending > 0 && <span className="muted">saving…</span>}
+          {(info.state === 'expired' || info.state === 'unpaid') && <span className="muted">{t('attendance.needsPayment')}</span>}
+          {record?.credited && status && status !== 'present' && <span className="muted">{t('attendance.plusDay')}</span>}
+          {pending > 0 && <span className="muted">{t('attendance.saving')}</span>}
         </div>
       </div>
-      <div className="seg" role="radiogroup" aria-label={`Attendance for ${fullName(student)}`}>
-        {Object.entries(ATTENDANCE_LABELS).map(([key, label]) => (
+      <div className="seg" role="radiogroup" aria-label={t('attendance.groupLabel', { name: fullName(student) })}>
+        {ATTENDANCE_STATUSES.map((key) => (
           <button
             key={key}
             type="button"
@@ -232,15 +235,15 @@ function RosterRow({ student, record, date }) {
             aria-checked={status === key}
             className={status === key ? `on-${key}` : ''}
             onClick={() => save(key)}
-            title={label}
+            title={t(`att.${key}`)}
           >
-            {label}
+            {t(`att.${key}`)}
           </button>
         ))}
       </div>
       <input
         type="text"
-        placeholder={status ? 'Add a note…' : 'Pick a status, then add a note'}
+        placeholder={status ? t('attendance.addNote') : t('attendance.pickFirst')}
         maxLength={300}
         value={note}
         onChange={(e) => setNote(e.target.value)}
@@ -252,15 +255,15 @@ function RosterRow({ student, record, date }) {
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur();
         }}
-        aria-label={`Note for ${fullName(student)}`}
+        aria-label={t('attendance.noteFor', { name: fullName(student) })}
       />
       <button
         type="button"
         className="btn btn-sm btn-square"
         disabled={!record && !status}
         onClick={clear}
-        title="Clear this day"
-        aria-label={`Clear attendance for ${fullName(student)}`}
+        title={t('attendance.clearDay')}
+        aria-label={t('attendance.clearFor', { name: fullName(student) })}
       >
         &times;
       </button>
