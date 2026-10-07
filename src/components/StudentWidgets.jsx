@@ -12,11 +12,12 @@ export function sortNewestFirst(list, field = 'createdAt') {
 export function PaymentsTable({ payments, currency, staff = false }) {
   if (payments.length === 0) {
     return (
-      <Empty icon="🧾" title="No payments yet">
+      <Empty code="NO PAYMENTS" title="No payments yet">
         <p className="small">Payments appear here as soon as club staff record them.</p>
       </Empty>
     );
   }
+  const hasNotes = payments.some((p) => p.note);
   return (
     <div className="table-wrap">
       <table className="stack-table">
@@ -28,7 +29,7 @@ export function PaymentsTable({ payments, currency, staff = false }) {
             <th>Covers</th>
             <th>Method</th>
             {staff && <th>By</th>}
-            <th>Note</th>
+            {hasNotes && <th>Note</th>}
           </tr>
         </thead>
         <tbody>
@@ -54,13 +55,15 @@ export function PaymentsTable({ payments, currency, staff = false }) {
                 )}
               </td>
               <td className="nowrap" data-label="Covers">
-                {p.periodStart ? `${formatDate(p.periodStart)} – ${formatDate(p.periodEnd)}` : `Paid until → ${formatDate(p.periodEnd)}`}
+                {p.periodStart ? `${formatDate(p.periodStart)} – ${formatDate(p.periodEnd)}` : `New end: ${formatDate(p.periodEnd)}`}
               </td>
               <td data-label="Method">{PAYMENT_METHODS[p.method] || p.method}</td>
               {staff && <td data-label="By">{p.createdByName}</td>}
-              <td className="small" style={{ maxWidth: 260 }} data-label="Note">
-                {p.note || <span className="muted">—</span>}
-              </td>
+              {hasNotes && (
+                <td className="small" style={{ maxWidth: 260 }} data-label="Note">
+                  {p.note || <span className="muted">—</span>}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -109,14 +112,14 @@ export function AttendanceCalendar({ records, clubDays, initialMonth }) {
       </div>
       {noted.length > 0 && (
         <div style={{ marginTop: '1rem' }}>
-          <h4 className="small muted" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <h4 className="eyebrow" style={{ marginTop: 18 }}>
             Notes this month
           </h4>
           <ul className="timeline">
             {noted.map((r) => (
               <li key={r.id}>
-                <span className={`dot c-${r.status}`} aria-hidden="true">
-                  {ATTENDANCE_LABELS[r.status][0]}
+                <span className={`log-tag t-${r.status}`} aria-hidden="true">
+                  {ATTENDANCE_LABELS[r.status].slice(0, 3).toUpperCase()}
                 </span>
                 <div>
                   <div>{r.note}</div>

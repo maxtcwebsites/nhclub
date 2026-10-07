@@ -1,11 +1,35 @@
-# Northhill Kids Club – parents & staff portal
+# Max TC – parents & staff portal (Northhill)
 
-A website for the Northhill Kids Club where parents register their children and
-follow their subscription, and club staff manage payments and attendance.
+A website for Max TC in Northhill. Parents register their children and follow
+their subscription, and club staff manage payments and attendance.
 
-White background and orange as the main color. It's built with React + Vite on Firebase
+The design is square and hard-edged: white background, orange as the main
+color, and the crest's red, blue and green for statuses. It's built with React + Vite on Firebase
 (Authentication and Cloud Firestore) and hosted on **GitHub Pages**:
 <https://maxtcwebsites.github.io/nhclub/>. Firebase Hosting works too.
+
+## Intro, music and motion
+
+* **Intro** (first visit in each browser session). The crest floats in three
+  pieces until the visitor presses **ENTER**, because browsers only allow sound
+  after a click. Then each piece slams into place on a beat, the drop hits,
+  and **Max TC** is typed out in a typewriter font. An orange shutter reveals
+  the site. **Skip** (or `Esc`) ends it at any time, and **Sound** (or `M`)
+  mutes it. The **Replay intro** button in the footer plays it again.
+* **Music**: generated live in the browser with the Web Audio API
+  ([`src/intro/sound.js`](src/intro/sound.js)), so there are no audio files and
+  no copyright issues. The visuals ([`IntroOverlay.jsx`](src/intro/IntroOverlay.jsx))
+  run on the same timeline, so every hit lands on the beat.
+* **Loading**: while the app downloads, a boot screen
+  ([`public/boot.css`](public/boot.css)) shows the crest taking itself apart and
+  rebuilding. The same animation appears whenever a page waits for data.
+  Between loading and the page, the orange shutter wipes across.
+* Visitors who turn on "reduce motion" in their system get a calm version
+  without shakes, flashes or particles.
+* The crest lives in [`public/logo/`](public/logo) as the full logo plus its
+  three cut-out panels. The panel positions are in
+  [`src/lib/crest.js`](src/lib/crest.js). The club name and location are set in
+  [`src/config.js`](src/config.js).
 
 ## What each account can do
 
@@ -63,7 +87,7 @@ Open <https://console.firebase.google.com/project/nhclub-1260c>.
    add **`maxtcwebsites.github.io`**. Without it, *Continue with Google*
    fails on the GitHub Pages site. Add your own domain too if you connect one.
 5. **Authentication → Templates**: set the sender name and the email text to
-   say "Northhill Kids Club". Parents get these emails to confirm their
+   say "Max TC". Parents get these emails to confirm their
    address and to reset their password.
 
 ## 2. Run it locally
@@ -241,7 +265,11 @@ firestore.rules          Security rules (the important part)
 .github/workflows/       GitHub Pages: test, build and deploy on every push
 firebase.json            Security headers / CSP, Firebase Hosting, emulators
 public/404.html          Redirects old-style links to the #/ address on GitHub Pages
-src/config.js            Super-admin email, club name, idle timeout
+src/config.js            Super-admin email, club name, location, idle timeout
+src/intro/               Intro animation + generated soundtrack
+src/lib/crest.js         Crest panels (for the build-up animations)
+public/logo/             Crest artwork (full + three panels)
+public/boot.css          Loading screen shown before the app starts
 src/firebase.js          Firebase initialisation
 src/lib/api.js           Every database write (shaped to match the rules)
 src/lib/billing.js       Subscription / expiry logic
@@ -263,4 +291,4 @@ tests/rules.test.js      Security-rules test suite
 | `payments/{id}` | append-only ledger: amount (cents), months, period, method, author | the parent and staff | staff (create only) |
 | `attendance/{studentId_date}` | present / absent / excused, note, `credited` | the parent and staff | staff |
 | `logs/{id}` | append-only audit trail | staff | created together with each change |
-| `settings/club` | club name, currency, monthly fee, absence policy, club days | signed-in users | super admin |
+| `settings/club` | currency, monthly fee, absence policy, club days | signed-in users | super admin |

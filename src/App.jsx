@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { SettingsProvider } from './context/SettingsContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
+import { IntroProvider } from './intro/IntroContext.jsx';
 import Layout from './components/Layout.jsx';
 import { DashboardRedirect, PublicOnly, RequireAdmin, RequireAuth, RequireStaff } from './components/Guards.jsx';
 import { Spinner } from './components/ui.jsx';
@@ -30,7 +31,8 @@ export default function App() {
     <AuthProvider>
       <SettingsProvider>
         <ToastProvider>
-          <Layout>
+          <IntroProvider>
+            <Layout>
             <Suspense fallback={<Spinner />}>
               <Routes>
                 <Route path="/" element={<Landing />} />
@@ -58,7 +60,8 @@ export default function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </Layout>
+            </Layout>
+          </IntroProvider>
         </ToastProvider>
       </SettingsProvider>
     </AuthProvider>

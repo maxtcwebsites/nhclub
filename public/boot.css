@@ -1,0 +1,121 @@
+/* Boot screen: visible before the app's JavaScript has loaded. */
+#boot {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  background: #0b0b0b;
+  color: #fff;
+  font-family: 'Space Mono', ui-monospace, monospace;
+}
+.boot-crest {
+  position: relative;
+  width: 92px;
+  aspect-ratio: 0.829;
+}
+.boot-piece {
+  position: absolute;
+  display: block;
+  animation: boot-build 1.8s cubic-bezier(0.7, 0, 0.2, 1) infinite;
+}
+.boot-piece img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.boot-red {
+  left: -0.897%;
+  top: -0.743%;
+  width: 49.327%;
+  height: 49.442%;
+  --ax: -48%;
+  --ay: -36%;
+  --ar: -14deg;
+}
+.boot-blue {
+  left: 51.57%;
+  top: -0.743%;
+  width: 48.879%;
+  height: 49.442%;
+  --ax: 48%;
+  --ay: -42%;
+  --ar: 12deg;
+  animation-delay: 0.08s;
+}
+.boot-green {
+  left: -0.897%;
+  top: 50.558%;
+  width: 101.345%;
+  height: 49.814%;
+  --ax: 0%;
+  --ay: 52%;
+  --ar: 7deg;
+  animation-delay: 0.16s;
+}
+@keyframes boot-build {
+  0%,
+  10% {
+    transform: translate(var(--ax), var(--ay)) rotate(var(--ar));
+    opacity: 0;
+  }
+  34%,
+  72% {
+    transform: none;
+    opacity: 1;
+  }
+  94%,
+  100% {
+    transform: translate(var(--ax), var(--ay)) rotate(var(--ar));
+    opacity: 0;
+  }
+}
+.boot-bar {
+  width: 120px;
+  height: 4px;
+  background: #222;
+  overflow: hidden;
+}
+.boot-bar span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: #ff6b1a;
+  animation: boot-slide 0.9s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+}
+@keyframes boot-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.boot-text {
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  font-weight: 700;
+}
+.boot-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 13px;
+  margin-left: 4px;
+  vertical-align: -1px;
+  background: #ff6b1a;
+  animation: boot-blink 0.8s steps(1) infinite;
+}
+@keyframes boot-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-piece,
+  .boot-bar span {
+    animation: none;
+  }
+}

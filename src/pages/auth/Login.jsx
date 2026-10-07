@@ -5,6 +5,7 @@ import { auth } from '../../firebase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { friendlyError } from '../../lib/errors.js';
 import { ErrorAlert, Field } from '../../components/ui.jsx';
+import Crest from '../../components/Crest.jsx';
 import GoogleButton from './GoogleButton.jsx';
 
 export default function Login() {
@@ -31,6 +32,7 @@ export default function Login() {
   return (
     <div className="auth-wrap">
       <div className="card auth-card">
+        <Crest className="crest-img" label="" />
         <div className="eyebrow">Welcome back</div>
         <h1>Sign in</h1>
         <p className="muted">Parents, teachers and directors all sign in here.</p>

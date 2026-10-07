@@ -9,12 +9,12 @@ export default function MonthCalendar({ month, onMonthChange, renderDay, small =
   return (
     <div className={small ? 'cal-small' : undefined}>
       <div className="cal-head">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onMonthChange(addMonths(month, -1))} aria-label="Previous month">
-          ←
+        <button type="button" className="cal-nav" onClick={() => onMonthChange(addMonths(month, -1))} aria-label="Previous month">
+          &lt;
         </button>
         <h3>{formatDate(month, { month: 'long', year: 'numeric' })}</h3>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onMonthChange(addMonths(month, 1))} aria-label="Next month">
-          →
+        <button type="button" className="cal-nav" onClick={() => onMonthChange(addMonths(month, 1))} aria-label="Next month">
+          &gt;
         </button>
       </div>
       <div className="calendar" role="grid">

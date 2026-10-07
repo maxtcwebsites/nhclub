@@ -69,7 +69,7 @@ export default function StaffDashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-4" style={{ marginBottom: '1.25rem' }}>
+      <div className="grid grid-4 stagger" style={{ marginBottom: 28 }}>
         <div className="card stat accent">
           <div className="label">Enrolled</div>
           <div className="value">{count('enrolled')}</div>
@@ -81,14 +81,12 @@ export default function StaffDashboard() {
         <div className="card stat red">
           <div className="label">Expired / not paid</div>
           <div className="value">
-            {count('expired')} <span className="muted" style={{ fontSize: '1.1rem' }}>/ {count('unpaid')}</span>
+            {count('expired')} <span className="of">/ {count('unpaid')}</span>
           </div>
         </div>
         <div className="card stat green">
           <div className="label">Collected this month</div>
-          <div className="value" style={{ fontSize: '1.6rem' }}>
-            {formatMoney(collected, settings.currency)}
-          </div>
+          <div className="value">{formatMoney(collected, settings.currency)}</div>
         </div>
       </div>
 
@@ -117,7 +115,7 @@ export default function StaffDashboard() {
         <Spinner />
       ) : visible.length === 0 ? (
         <div className="card">
-          <Empty icon="🎉" title={rows.length === 0 ? 'No students yet' : 'Nobody here'}>
+          <Empty code={rows.length === 0 ? 'NO STUDENTS' : '0 RESULTS'} title={rows.length === 0 ? 'No students yet' : 'Nobody here'}>
             <p className="small">
               {rows.length === 0 ? 'Students appear here when parents register them.' : 'No students match this filter.'}
             </p>
@@ -149,8 +147,8 @@ export default function StaffDashboard() {
                         {fullName(student)}
                       </Link>
                       <span className="sub">
-                        {age !== null ? `${age} y` : ''}
-                        {student.allergies ? ' · ⚠️ allergies' : ''}
+                        {age !== null ? `${age} yrs` : ''}
+                        {student.allergies ? ' / ALLERGIES' : ''}
                       </span>
                     </td>
                     <td data-label="Parent">
@@ -192,8 +190,8 @@ export default function StaffDashboard() {
       <div className="card section">
         <div className="card-title">
           <h2>Latest payments</h2>
-          <Link to="/staff/activity" className="small">
-            Full activity log →
+          <Link to="/staff/activity" className="btn btn-sm">
+            Full log
           </Link>
         </div>
         {recent.data.length === 0 ? (
@@ -206,8 +204,8 @@ export default function StaffDashboard() {
               const s = studentsById[p.studentId];
               return (
                 <li key={p.id}>
-                  <span className="dot" aria-hidden="true">
-                    {p.kind === 'payment' ? '💵' : '🛠️'}
+                  <span className={`log-tag ${p.kind === 'payment' ? 't-pay' : 't-fix'}`} aria-hidden="true">
+                    {p.kind === 'payment' ? 'PAY' : 'FIX'}
                   </span>
                   <div>
                     <div>

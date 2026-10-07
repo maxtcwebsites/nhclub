@@ -32,7 +32,7 @@ export default function StudentDetail() {
   if (error || !student) {
     return (
       <div className="card">
-        <Empty icon="🔍" title="Student not found">
+        <Empty code="404" title="Student not found">
           <Link to="/staff">Back to the dashboard</Link>
         </Empty>
       </div>
@@ -55,7 +55,7 @@ export default function StudentDetail() {
   return (
     <>
       <Link to="/staff" className="back-link">
-        ← All students
+        &lt;&lt; All students
       </Link>
       <div className="page-head">
         <div className="row">
@@ -64,8 +64,8 @@ export default function StudentDetail() {
             <h1 style={{ marginBottom: '0.2rem' }}>{fullName(student)}</h1>
             <div className="row">
               <StatusBadge student={student} soonDays={settings.expiringSoonDays} />
-              {age !== null && <span className="muted small">{age} years old</span>}
-              {student.grade && <span className="muted small">· {student.grade}</span>}
+              {age !== null && <span className="muted small mono">{age} yrs</span>}
+              {student.grade && <span className="muted small mono">/ {student.grade}</span>}
             </div>
           </div>
         </div>
@@ -78,7 +78,7 @@ export default function StudentDetail() {
           <button type="button" className="btn btn-secondary" onClick={() => setModal('correction')}>
             Correction
           </button>
-          <Link to={`/staff/students/${studentId}/edit`} className="btn btn-ghost">
+          <Link to={`/staff/students/${studentId}/edit`} className="btn">
             Edit
           </Link>
           <button type="button" className={archived ? 'btn btn-secondary' : 'btn btn-danger'} onClick={() => setModal('status')}>
@@ -88,35 +88,35 @@ export default function StudentDetail() {
       </div>
 
       {student.allergies && (
-        <div className="alert alert-warn" style={{ marginBottom: '1rem' }}>
-          ⚠️ Allergies: {student.allergies}
+        <div className="alert alert-warn" style={{ marginBottom: 20 }}>
+          <strong className="mono">ALLERGIES:</strong> {student.allergies}
         </div>
       )}
 
       <SubscriptionHero student={student} soonDays={settings.expiringSoonDays} />
 
-      <div className="grid grid-4" style={{ margin: '1rem 0 1.5rem' }}>
+      <div className="grid grid-4 stagger" style={{ margin: '28px 0' }}>
         <div className="card stat">
           <div className="label">Total paid</div>
-          <div className="value" style={{ fontSize: '1.5rem' }}>
+          <div className="value">
             {formatMoney(student.totalPaidCents, settings.currency)}
           </div>
         </div>
         <div className="card stat">
           <div className="label">Months paid</div>
-          <div className="value" style={{ fontSize: '1.5rem' }}>
+          <div className="value">
             {student.monthsPaid}
           </div>
         </div>
         <div className="card stat">
           <div className="label">Days present</div>
-          <div className="value" style={{ fontSize: '1.5rem' }}>
+          <div className="value">
             {counts.present}
           </div>
         </div>
         <div className="card stat">
           <div className="label">Absent / excused</div>
-          <div className="value" style={{ fontSize: '1.5rem' }}>
+          <div className="value">
             {counts.absent} / {counts.excused}
           </div>
         </div>

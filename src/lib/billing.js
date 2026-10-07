@@ -1,7 +1,7 @@
 import { addDays, addMonths, diffDays } from './dates.js';
 
 export const DEFAULT_SETTINGS = {
-  clubName: 'Northhill Kids Club',
+  clubName: 'Max TC',
   currency: '$',
   monthlyFeeCents: 0,
   absencePolicy: 'charge',

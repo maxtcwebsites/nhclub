@@ -2,18 +2,10 @@ import { useEffect, useId, useRef } from 'react';
 import { subscriptionInfo } from '../lib/billing.js';
 import { formatDate, todayStr } from '../lib/dates.js';
 import { friendlyError } from '../lib/errors.js';
+import { CrestLoader } from './Crest.jsx';
 
-export function Spinner({ label = 'Loading…' }) {
-  return (
-    <div className="center-page" role="status">
-      <div>
-        <div className="spinner" />
-        <p className="muted small" style={{ marginTop: '0.75rem' }}>
-          {label}
-        </p>
-      </div>
-    </div>
-  );
+export function Spinner({ label = 'Loading' }) {
+  return <CrestLoader label={label} />;
 }
 
 export function ErrorAlert({ error }) {
@@ -25,11 +17,11 @@ export function ErrorAlert({ error }) {
   );
 }
 
-export function Empty({ icon = '🌤️', title, children }) {
+export function Empty({ code = 'EMPTY', title, children }) {
   return (
     <div className="empty">
-      <div className="icon" aria-hidden="true">
-        {icon}
+      <div className="code" aria-hidden="true">
+        [ {code} ]
       </div>
       <h3>{title}</h3>
       {children}
@@ -82,17 +74,13 @@ export function SubscriptionHero({ student, soonDays }) {
   return (
     <div className={`status-hero ${info.state}`}>
       <div>
-        <div className="small" style={{ fontWeight: 800, opacity: 0.8 }}>
-          {headline}
-        </div>
-        <div className="big">
-          {info.expiry ? `Paid until ${formatDate(info.expiry)}` : 'Waiting for first payment'}
-        </div>
-        {info.expiry && <div style={{ fontWeight: 700 }}>{info.label}</div>}
+        <div className="label">{headline}</div>
+        <div className="big">{info.expiry ? `Paid until ${formatDate(info.expiry)}` : 'Waiting for first payment'}</div>
+        {info.expiry && <div className="days">{info.label}</div>}
       </div>
       {student.creditDays > 0 && (
-        <div className="small" style={{ fontWeight: 700 }}>
-          Includes {student.creditDays} extra day{student.creditDays === 1 ? '' : 's'} for absences
+        <div className="extra">
+          +{student.creditDays} day{student.creditDays === 1 ? '' : 's'} for absences
         </div>
       )}
     </div>

@@ -57,7 +57,7 @@ export default function ChildFormPage({ mode, staff = false }) {
   if (editing && !student) {
     return (
       <div className="card">
-        <Empty icon="🔍" title="Child not found">
+        <Empty code="404" title="Child not found">
           <Link to={staff ? '/staff' : '/family'}>Go back</Link>
         </Empty>
       </div>
@@ -89,7 +89,7 @@ export default function ChildFormPage({ mode, staff = false }) {
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
       <Link to={backTo} className="back-link">
-        ← Back
+        &lt;&lt; Back
       </Link>
       <div className="page-head">
         <div>

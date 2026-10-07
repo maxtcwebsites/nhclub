@@ -146,7 +146,7 @@ export default function AttendancePage() {
           {students.loading ? (
             <Spinner />
           ) : roster.length === 0 ? (
-            <Empty icon="🧒" title="No enrolled students yet" />
+            <Empty code="NO STUDENTS" title="No enrolled students yet" />
           ) : (
             <div className="roster">
               {roster.map((s) => (
@@ -216,7 +216,7 @@ function RosterRow({ student, record, date }) {
         <strong>
           <Link to={`/staff/students/${student.id}`}>{fullName(student)}</Link>
         </strong>
-        <div className="row small" style={{ gap: '0.35rem' }}>
+        <div className="meta-line">
           <StatusBadge student={student} soonDays={settings.expiringSoonDays} />
           {(info.state === 'expired' || info.state === 'unpaid') && <span className="muted">needs payment</span>}
           {record?.credited && status && status !== 'present' && <span className="muted">+1 day</span>}
@@ -256,13 +256,13 @@ function RosterRow({ student, record, date }) {
       />
       <button
         type="button"
-        className="btn btn-ghost btn-sm"
+        className="btn btn-sm btn-square"
         disabled={!record && !status}
         onClick={clear}
         title="Clear this day"
         aria-label={`Clear attendance for ${fullName(student)}`}
       >
-        ✕
+        &times;
       </button>
     </div>
   );

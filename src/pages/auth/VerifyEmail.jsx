@@ -5,6 +5,7 @@ import { auth } from '../../firebase.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { friendlyError } from '../../lib/errors.js';
 import { ErrorAlert, Spinner } from '../../components/ui.jsx';
+import Crest from '../../components/Crest.jsx';
 
 export default function VerifyEmail() {
   const { user, emailVerified, refreshVerification, logout } = useAuth();
@@ -35,10 +36,9 @@ export default function VerifyEmail() {
 
   return (
     <div className="auth-wrap">
-      <div className="card auth-card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '2.6rem' }} aria-hidden="true">
-          ✉️
-        </div>
+      <div className="card auth-card">
+        <Crest className="crest-img" label="" />
+        <div className="eyebrow">Confirm your email</div>
         <h1>Check your inbox</h1>
         <p>
           We sent a confirmation link to <strong>{user.email}</strong>. Open it to activate your account, then come back here.

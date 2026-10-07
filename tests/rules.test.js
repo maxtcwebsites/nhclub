@@ -109,7 +109,7 @@ function userDoc(person, role) {
 
 async function seedSettings(policy = 'charge') {
   await seed('settings/club', {
-    clubName: 'Northhill Kids Club',
+    clubName: 'Max TC',
     currency: '$',
     monthlyFeeCents: 5000,
     absencePolicy: policy,
@@ -841,7 +841,7 @@ describe('logs', () => {
 // ===========================================================================
 describe('settings', () => {
   const settings = {
-    clubName: 'Northhill Kids Club',
+    clubName: 'Max TC',
     currency: '$',
     monthlyFeeCents: 6000,
     absencePolicy: 'excused',

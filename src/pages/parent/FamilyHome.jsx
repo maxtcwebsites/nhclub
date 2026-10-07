@@ -23,7 +23,7 @@ export default function FamilyHome() {
       <div className="page-head">
         <div>
           <div className="eyebrow">My family</div>
-          <h1>Hi, {profile.displayName.split(' ')[0]} 👋</h1>
+          <h1>Hi, {profile.displayName.split(' ')[0]}</h1>
           <p className="muted">Your children, their club subscription and attendance — updated live.</p>
         </div>
         <div className="row">
@@ -44,7 +44,7 @@ export default function FamilyHome() {
         <Spinner />
       ) : children.length === 0 ? (
         <div className="card">
-          <Empty icon="🧒" title="No children registered yet">
+          <Empty code="NO CHILDREN" title="No children registered yet">
             <p>Add your first child to enroll them in the club.</p>
             <Link to="/family/add" className="btn btn-primary">
               + Add a child
@@ -52,26 +52,26 @@ export default function FamilyHome() {
           </Empty>
         </div>
       ) : (
-        <div className="cards">
+        <div className="cards stagger">
           {children.map((child) => {
             const info = subscriptionInfo(child, today, settings.expiringSoonDays);
             const age = ageFrom(child.dateOfBirth, today);
             return (
-              <Link key={child.id} to={`/family/${child.id}`} className="card child-card" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <Link key={child.id} to={`/family/${child.id}`} className="card child-card">
                 <div className="child-card-head">
                   <div className="avatar">{initials(child.firstName, child.lastName)}</div>
                   <div style={{ minWidth: 0 }}>
                     <h3 style={{ margin: 0 }}>{fullName(child)}</h3>
-                    <div className="muted small">
-                      {age !== null ? `${age} years old` : ''}
-                      {child.grade ? ` · ${child.grade}` : ''}
+                    <div className="muted small mono">
+                      {age !== null ? `${age} yrs` : ''}
+                      {child.grade ? ` / ${child.grade}` : ''}
                     </div>
                   </div>
                   <div style={{ marginLeft: 'auto' }}>
                     <StatusBadge student={child} soonDays={settings.expiringSoonDays} />
                   </div>
                 </div>
-                <div className="preview" style={{ fontWeight: 600 }}>
+                <div className="preview">
                   {info.expiry ? (
                     <>
                       Paid until <strong>{formatDate(info.expiry)}</strong>
@@ -86,30 +86,22 @@ export default function FamilyHome() {
                     </>
                   )}
                 </div>
-                <span className="small" style={{ color: 'var(--orange-700)', fontWeight: 800 }}>
-                  View payments &amp; attendance →
-                </span>
+                <span className="go">Payments &amp; attendance &gt;&gt;</span>
               </Link>
             );
           })}
         </div>
       )}
 
-      <div className="card tint section">
-        <h3>How payments work</h3>
-        <p style={{ marginBottom: '0.5rem' }}>
-          Pay the club directly (cash, card or bank transfer). A teacher records your payment and it appears on your child’s page
-          straight away, with the dates it covers.
-          {settings.monthlyFeeCents > 0 && (
-            <>
-              {' '}
-              The monthly fee is <strong>{formatMoney(settings.monthlyFeeCents, settings.currency)}</strong>.
-            </>
-          )}
-        </p>
-        <p className="small muted" style={{ margin: 0 }}>
-          Paid but don’t see it? Give it a little time, then contact the club and mention your child’s name and the payment date.
-        </p>
+      <div className="alert alert-info section">
+        Pay at the club. Staff record it and it shows up here right away.
+        {settings.monthlyFeeCents > 0 && (
+          <>
+            {' '}
+            Monthly fee: <strong>{formatMoney(settings.monthlyFeeCents, settings.currency)}</strong>.
+          </>
+        )}{' '}
+        Paid but not showing? Contact the club with your child’s name and the payment date.
       </div>
     </>
   );

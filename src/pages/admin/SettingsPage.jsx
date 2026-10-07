@@ -7,6 +7,7 @@ import { saveSettings } from '../../lib/api.js';
 import { ABSENCE_POLICIES, centsToInput, parseMoneyToCents } from '../../lib/billing.js';
 import { friendlyError } from '../../lib/errors.js';
 import { ErrorAlert, Field, Spinner } from '../../components/ui.jsx';
+import { CLUB_NAME } from '../../config.js';
 
 const DAYS = [
   [1, 'Mon'],
@@ -38,7 +39,6 @@ export default function SettingsPage() {
     setError('');
     const monthlyFeeCents = parseMoneyToCents(form.fee);
     const expiringSoonDays = Number(form.expiringSoonDays);
-    if (!form.clubName.trim()) return setError('Enter the club name.');
     if (!form.currency.trim()) return setError('Enter a currency symbol, e.g. $ or €.');
     if (!Number.isInteger(monthlyFeeCents) || monthlyFeeCents < 0) return setError('Enter a valid monthly fee (0 or more).');
     if (!Number.isInteger(expiringSoonDays) || expiringSoonDays < 1 || expiringSoonDays > 60) {
@@ -47,7 +47,7 @@ export default function SettingsPage() {
     setBusy(true);
     try {
       await saveSettings(db, actor, {
-        clubName: form.clubName.trim(),
+        clubName: CLUB_NAME,
         currency: form.currency.trim(),
         monthlyFeeCents,
         absencePolicy: form.absencePolicy,
@@ -79,11 +79,10 @@ export default function SettingsPage() {
       <form className="stack" onSubmit={submit}>
         <ErrorAlert error={error} />
         <div className="card form">
-          <h2>General</h2>
+          <div className="card-title">
+            <h2>General</h2>
+          </div>
           <div className="grid grid-2">
-            <Field label="Club name" required>
-              {(id) => <input id={id} type="text" maxLength={80} value={form.clubName} onChange={set('clubName')} />}
-            </Field>
             <Field label="Currency symbol" required hint="Shown next to amounts, e.g. $, €, £.">
               {(id) => <input id={id} type="text" maxLength={5} value={form.currency} onChange={set('currency')} />}
             </Field>
@@ -119,8 +118,10 @@ export default function SettingsPage() {
         </div>
 
         <div className="card form">
-          <div>
+          <div className="card-title">
             <h2>Absences &amp; payments</h2>
+          </div>
+          <div>
             <p className="muted small" style={{ margin: 0 }}>
               Does skipping a day mean the family does not have to pay for it? Choose how absences affect a paid subscription. A
               credited day only counts while the subscription is active, and changing this setting never removes days that were
@@ -132,7 +133,7 @@ export default function SettingsPage() {
               <input type="radio" name="absencePolicy" value={key} checked={form.absencePolicy === key} onChange={set('absencePolicy')} />
               <span>
                 <strong>{p.label}</strong>
-                {key === 'charge' && <span className="badge plain badge-teacher" style={{ marginLeft: '0.5rem' }}>Default</span>}
+                {key === 'charge' && <span className="tag">Default</span>}
                 <span className="muted small" style={{ display: 'block' }}>
                   {p.help}
                 </span>

@@ -4,6 +4,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../firebase.js';
 import { friendlyError } from '../../lib/errors.js';
 import { ErrorAlert, Field } from '../../components/ui.jsx';
+import Crest from '../../components/Crest.jsx';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -30,6 +31,7 @@ export default function ForgotPassword() {
   return (
     <div className="auth-wrap">
       <div className="card auth-card">
+        <Crest className="crest-img" label="" />
         <h1>Reset your password</h1>
         {sent ? (
           <>

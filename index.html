@@ -3,17 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Northhill Kids Club — register your children, follow payments and attendance." />
-    <meta name="theme-color" content="#f97316" />
+    <meta name="description" content="Max TC, Northhill. Parents and staff portal." />
+    <meta name="theme-color" content="#0b0b0b" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
-    <title>Northhill Kids Club</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&family=Special+Elite&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/boot.css" />
+    <title>Max TC</title>
   </head>
   <body>
-    <noscript>Please enable JavaScript to use the Northhill Kids Club portal.</noscript>
+    <noscript>Please enable JavaScript to use the Max TC portal.</noscript>
+    <!-- Shown until the app has loaded. -->
+    <div id="boot" aria-hidden="true">
+      <div class="boot-crest">
+        <span class="boot-piece boot-red"><img src="/logo/piece-red.png" alt="" /></span>
+        <span class="boot-piece boot-blue"><img src="/logo/piece-blue.png" alt="" /></span>
+        <span class="boot-piece boot-green"><img src="/logo/piece-green.png" alt="" /></span>
+      </div>
+      <div class="boot-bar"><span></span></div>
+      <div class="boot-text">LOADING<span class="boot-cursor"></span></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

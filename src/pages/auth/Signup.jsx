@@ -5,6 +5,7 @@ import { auth, db } from '../../firebase.js';
 import { ensureUserProfile, signupInProgress, updateOwnProfile } from '../../lib/api.js';
 import { friendlyError, passwordProblems } from '../../lib/errors.js';
 import { ErrorAlert, Field } from '../../components/ui.jsx';
+import Crest from '../../components/Crest.jsx';
 import GoogleButton from './GoogleButton.jsx';
 
 export default function Signup() {
@@ -53,7 +54,8 @@ export default function Signup() {
   return (
     <div className="auth-wrap">
       <div className="card auth-card">
-        <div className="eyebrow">Join the club</div>
+        <Crest className="crest-img" label="" />
+        <div className="eyebrow">New account</div>
         <h1>Create a parent account</h1>
         <p className="muted">Register once, then add each of your children.</p>
         <form className="form" onSubmit={submit} noValidate>

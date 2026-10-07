@@ -22,7 +22,7 @@ export default function ChildDetail() {
   if (error || !student) {
     return (
       <div className="card">
-        <Empty icon="🔍" title="Child not found">
+        <Empty code="404" title="Child not found">
           <p>It may have been removed, or it belongs to another account.</p>
           <Link to="/family">Back to my family</Link>
         </Empty>
@@ -37,7 +37,7 @@ export default function ChildDetail() {
   return (
     <>
       <Link to="/family" className="back-link">
-        ← My family
+        &lt;&lt; My family
       </Link>
       <div className="page-head">
         <div className="row">
@@ -46,7 +46,7 @@ export default function ChildDetail() {
             <h1 style={{ marginBottom: '0.2rem' }}>{fullName(student)}</h1>
             <div className="row">
               <StatusBadge student={student} soonDays={settings.expiringSoonDays} />
-              {age !== null && <span className="muted small">{age} years old</span>}
+              {age !== null && <span className="muted small mono">{age} yrs</span>}
             </div>
           </div>
         </div>
@@ -57,8 +57,8 @@ export default function ChildDetail() {
 
       <SubscriptionHero student={student} soonDays={settings.expiringSoonDays} />
 
-      <div className="split section" style={{ marginTop: '1.25rem' }}>
-        <div className="stack">
+      <div className="split section">
+        <div className="stack stagger">
           <div className="card">
             <div className="card-title">
               <h2>Payment history</h2>
