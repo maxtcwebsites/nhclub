@@ -4,7 +4,8 @@ A website for the Northhill Kids Club where parents register their children and
 follow their subscription, and club staff manage payments and attendance.
 
 White background and orange as the main color. It's built with React + Vite on Firebase
-(Authentication, Cloud Firestore, Hosting).
+(Authentication and Cloud Firestore) and hosted on **GitHub Pages**:
+<https://maxtcwebsites.github.io/nhclub/>. Firebase Hosting works too.
 
 ## What each account can do
 
@@ -53,12 +54,14 @@ Open <https://console.firebase.google.com/project/nhclub-1260c>.
    **Google**.
 2. **Firestore Database → Create database**: choose *production mode* and a
    region close to the club. You can't change the region later.
-3. **Firestore rules**: either deploy them (step 3 below) or copy the whole
-   [`firestore.rules`](firestore.rules) file into *Firestore Database → Rules*
-   and press **Publish**.
-4. **Authentication → Settings → Authorized domains**: `nhclub-1260c.web.app`
-   and `nhclub-1260c.firebaseapp.com` are already there. Add your own domain
-   if you connect one.
+3. **Firestore rules**: copy the whole [`firestore.rules`](firestore.rules)
+   file into *Firestore Database → Rules* and press **Publish**, or run
+   `npx firebase login` and then `npm run deploy:rules`. GitHub Pages only
+   hosts the website. The rules always live in Firebase, so publish them
+   again whenever `firestore.rules` changes.
+4. **Authentication → Settings → Authorized domains**: press *Add domain* and
+   add **`maxtcwebsites.github.io`**. Without it, *Continue with Google*
+   fails on the GitHub Pages site. Add your own domain too if you connect one.
 5. **Authentication → Templates**: set the sender name and the email text to
    say "Northhill Kids Club". Parents get these emails to confirm their
    address and to reset their password.
@@ -77,16 +80,39 @@ npm run emulators            # terminal 1
 npm run dev:emulators        # terminal 2
 ```
 
-## 3. Deploy
+## 3. Deploy to GitHub Pages
+
+One-time setup on GitHub:
+
+1. Open the repository's **Settings → Pages**.
+2. Under **Build and deployment → Source**, choose **GitHub Actions**. Don't
+   pick "Deploy from a branch": that would publish the raw source code, and
+   the site would show a blank page.
+3. Tick **Enforce HTTPS** if it's shown.
+
+After that, every push to `claude/northhill-kids-club` (or `main`) runs
+[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml).
+It runs the security-rules tests, builds the site, and publishes it to
+<https://maxtcwebsites.github.io/nhclub/> **only if the tests pass**. You
+can also start it by hand: open **Actions → Deploy to GitHub Pages → Run
+workflow**.
+
+Pages are addressed with `#`, for example
+`https://maxtcwebsites.github.io/nhclub/#/family`. That's what lets every page
+work on a static host. Old-style links without the `#` are redirected
+automatically.
+
+### Alternative: Firebase Hosting
+
+The same build also works on Firebase Hosting, which can send the full set of
+security headers from `firebase.json`:
 
 ```bash
 npx firebase login
 npm run deploy        # builds and deploys hosting + Firestore rules
-# or just the rules:
-npm run deploy:rules
 ```
 
-The site will be live at <https://nhclub-1260c.web.app>.
+That site would be at <https://nhclub-1260c.web.app>.
 
 ## 4. First sign-in as super admin
 
@@ -155,16 +181,25 @@ npm test     # needs Java 11+; starts the emulator, runs the tests, stops it
 
 ### Website
 
-* Strict **Content-Security-Policy**, **HSTS**, `X-Frame-Options: DENY`
-  (no clickjacking), `nosniff`, a restrictive `Permissions-Policy` and
-  `Referrer-Policy`, set in [`firebase.json`](firebase.json).
+* A strict **Content-Security-Policy** only allows scripts, styles and
+  connections from this site, Firebase and Google. GitHub Pages can't send
+  custom headers, so the build puts the same policy into a `<meta>` tag in
+  `index.html`. [`firebase.json`](firebase.json) is the single source for it.
+* **Clickjacking protection.** The app refuses to load inside another
+  website's frame.
+* **HTTPS only.** All of `github.io` is on the browsers' HSTS preload list,
+  and **Enforce HTTPS** should be on in the Pages settings.
+* On Firebase Hosting, the site also sends HSTS, `X-Frame-Options: DENY`,
+  `nosniff`, `Permissions-Policy` and `Referrer-Policy` headers.
 * Staff accounts are **signed out after 30 minutes** of inactivity
   (`src/config.js`).
 * Login errors never reveal whether an email is registered. The password
   reset page always gives the same answer.
 * Passwords need at least 8 characters with letters and numbers.
 * Redirects after login only go to pages inside the site.
-* `robots.txt` keeps the private pages out of search engines.
+* Search engines only see the public landing page. Every other page is behind
+  sign-in and sits behind a `#` address, which crawlers don't index as a
+  separate page.
 
 ### Recommended extra hardening (Firebase / Google Cloud console)
 
@@ -173,12 +208,16 @@ npm test     # needs Java 11+; starts the emulator, runs the tests, stops it
    everything.
 2. **Restrict the API key**: Google Cloud console → *APIs & Services →
    Credentials* → the "Browser key". Under *Website restrictions*, allow only
-   `https://nhclub-1260c.web.app/*`, `https://nhclub-1260c.firebaseapp.com/*`,
-   `http://localhost:5173/*` and your own domain. The key is public by design,
+   `https://maxtcwebsites.github.io/*`, `https://nhclub-1260c.web.app/*`,
+   `https://nhclub-1260c.firebaseapp.com/*`, `http://localhost:5173/*` and
+   your own domain. The key is public by design,
    but this stops other websites from using it.
 3. **App Check**: create a reCAPTCHA v3 key, register it in *Firebase → App
-   Check*, put `VITE_RECAPTCHA_SITE_KEY=<site key>` in `.env.local`,
-   redeploy, then press **Enforce** for Cloud Firestore. After that, only
+   Check* (add the domain `maxtcwebsites.github.io` to the key). Then, on
+   GitHub, open **Settings → Secrets and variables → Actions → Variables** and
+   add `VITE_RECAPTCHA_SITE_KEY` with the site key. For local runs, put it in
+   `.env.local` instead. Push or re-run the workflow, check that the site
+   works, then press **Enforce** for Cloud Firestore. After that, only
    your website can talk to the database.
 4. **Authentication → Settings**: keep **Email enumeration protection** on,
    and set a **password policy** (minimum length 8 or more).
@@ -199,7 +238,9 @@ npm test     # needs Java 11+; starts the emulator, runs the tests, stops it
 
 ```
 firestore.rules          Security rules (the important part)
-firebase.json            Hosting, security headers, emulators
+.github/workflows/       GitHub Pages: test, build and deploy on every push
+firebase.json            Security headers / CSP, Firebase Hosting, emulators
+public/404.html          Redirects old-style links to the #/ address on GitHub Pages
 src/config.js            Super-admin email, club name, idle timeout
 src/firebase.js          Firebase initialisation
 src/lib/api.js           Every database write (shaped to match the rules)

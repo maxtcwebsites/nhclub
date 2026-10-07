@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Northhill Kids Club</title>
+    <script>
+      // Someone opened an old-style link like /nhclub/family. Send them to
+      // the same page in the app (/nhclub/#/family).
+      (function () {
+        // The site lives in a sub-folder on <user>.github.io/<repo>/ and at
+        // the root on a custom domain. (Rename 'nhclub' if the repo changes.)
+        var parts = location.pathname.split('/').filter(Boolean);
+        var inProjectFolder = /\.github\.io$/.test(location.hostname) || parts[0] === 'nhclub';
+        var base = inProjectFolder && parts.length ? '/' + parts.shift() + '/' : '/';
+        location.replace(base + '#/' + parts.join('/'));
+      })();
+    </script>
+  </head>
+  <body>
+    <p><a href="./">Go to the Northhill Kids Club portal</a></p>
+  </body>
+</html>

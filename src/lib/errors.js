@@ -16,6 +16,8 @@ const MESSAGES = {
   'auth/popup-blocked': 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.',
   'auth/network-request-failed': 'Network problem. Check your connection and try again.',
   'auth/operation-not-allowed': 'This sign-in method is not enabled yet. Please contact the club.',
+  'auth/unauthorized-domain':
+    'Google sign-in is not enabled for this website address yet. The club admin must add it under Firebase → Authentication → Settings → Authorized domains.',
   'auth/requires-recent-login': 'For your security, please sign out and sign in again first.',
   'auth/account-exists-with-different-credential':
     'This email is already registered with a password. Sign in with your email and password.',
