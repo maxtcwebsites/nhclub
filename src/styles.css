@@ -569,20 +569,6 @@ main {
   text-transform: none;
   letter-spacing: 0;
 }
-.footer button {
-  height: 32px;
-  padding: 0 12px;
-  background: none;
-  border: 2px solid #4a4a4a;
-  color: var(--paper);
-  font: inherit;
-  cursor: pointer;
-}
-.footer button:hover {
-  border-color: var(--orange);
-  color: var(--orange);
-}
-
 /* ---------- Cards / stats ---------- */
 
 .card {

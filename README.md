@@ -17,12 +17,14 @@ color, and the crest's red, blue and green for statuses. It's built with React +
 
 ## Intro, music and motion
 
-* **Intro** (first visit in each browser session). The crest floats in three
+* **Intro** (off by default). It plays from **Ajustes → Intro → Ver la intro**.
+  The same section has a switch to play it when the site opens (once per
+  browser session, saved on that device). The crest floats in three
   pieces until the visitor presses **ENTER**, because browsers only allow sound
   after a click. Then each piece slams into place on a beat, the drop hits,
   and the creator credit **Max TC** is typed out in a typewriter font. An
   orange shutter reveals the site. The scrolling background text says AClub. **Skip** (or `Esc`) ends it at any time, and **Sound** (or `M`)
-  mutes it. The **Replay intro** button in the footer plays it again.
+  mutes it.
 * **Music**: generated live in the browser with the Web Audio API
   ([`src/intro/sound.js`](src/intro/sound.js)), so there are no audio files and
   no copyright issues. The visuals ([`IntroOverlay.jsx`](src/intro/IntroOverlay.jsx))

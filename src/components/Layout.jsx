@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useIntro } from '../intro/IntroContext.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { CLUB_NAME, LOCATION_NAME } from '../config.js';
 import Crest from './Crest.jsx';
@@ -29,7 +28,6 @@ export function LanguageToggle({ className = '' }) {
 
 export default function Layout({ children }) {
   const { user, emailVerified, isStaff, isAdmin, logout, profile } = useAuth();
-  const { replay } = useIntro();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const location = useLocation();
@@ -119,9 +117,6 @@ export default function Layout({ children }) {
             <strong>{CLUB_NAME}</strong> / {LOCATION_NAME} / {new Date().getFullYear()}
           </span>
           <span>{t('footer.private')}</span>
-          <button type="button" onClick={replay}>
-            {t('footer.replay')}
-          </button>
         </div>
       </footer>
     </>

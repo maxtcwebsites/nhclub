@@ -34,7 +34,6 @@ export default {
   },
   footer: {
     private: 'La información de tu familia solo la ves tú y el personal del club.',
-    replay: 'Ver la intro',
   },
   landing: {
     goDashboard: 'Ir al panel',
@@ -549,6 +548,11 @@ export default {
     title: 'Ajustes',
     language: 'Idioma',
     languageHint: 'Se guarda en este dispositivo.',
+    intro: 'Intro',
+    introText: 'Animación con música. Mejor con sonido.',
+    introPlay: 'Ver la intro',
+    introOnOpen: 'Reproducir la intro al abrir la web',
+    introOnOpenHint: 'Una vez por sesión. Se guarda en este dispositivo.',
     profile: 'Perfil',
     fullName: 'Nombre completo',
     phone: 'Teléfono',

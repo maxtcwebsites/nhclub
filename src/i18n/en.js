@@ -34,7 +34,6 @@ export default {
   },
   footer: {
     private: 'Your family’s information is only visible to you and club staff.',
-    replay: 'Replay intro',
   },
   landing: {
     goDashboard: 'Go to dashboard',
@@ -547,6 +546,11 @@ export default {
     title: 'Settings',
     language: 'Language',
     languageHint: 'Saved on this device.',
+    intro: 'Intro',
+    introText: 'Animation with music. Best with sound on.',
+    introPlay: 'Play intro',
+    introOnOpen: 'Play the intro when the site opens',
+    introOnOpenHint: 'Once per session. Saved on this device.',
     profile: 'Profile',
     fullName: 'Full name',
     phone: 'Phone number',

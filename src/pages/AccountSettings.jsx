@@ -4,15 +4,17 @@ import { auth, db } from '../firebase.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
+import { useIntro } from '../intro/IntroContext.jsx';
 import { updateOwnProfile } from '../lib/api.js';
 import { formatTimestamp } from '../lib/dates.js';
 import { friendlyError } from '../lib/errors.js';
 import { ErrorAlert, Field, RoleBadge } from '../components/ui.jsx';
 
-// Account settings: language, profile and password.
+// Account settings: language, intro, profile and password.
 export default function AccountSettings() {
   const { user, profile, role } = useAuth();
   const { t, lang, setLang, languages } = useI18n();
+  const { replay, autoplay, setAutoplay } = useIntro();
   const toast = useToast();
   const [name, setName] = useState(profile.displayName);
   const [phone, setPhone] = useState(profile.phone || '');
@@ -64,6 +66,29 @@ export default function AccountSettings() {
           <p className="small muted" style={{ margin: 0 }}>
             {t('account.languageHint')}
           </p>
+        </section>
+
+        <section className="card form" aria-labelledby="intro-title">
+          <div className="card-title">
+            <h2 id="intro-title">{t('account.intro')}</h2>
+          </div>
+          <div className="row-between">
+            <p className="small muted" style={{ margin: 0 }}>
+              {t('account.introText')}
+            </p>
+            <button type="button" className="btn btn-primary" onClick={replay}>
+              {t('account.introPlay')}
+            </button>
+          </div>
+          <label className="check">
+            <input type="checkbox" checked={autoplay} onChange={(e) => setAutoplay(e.target.checked)} />
+            <span>
+              {t('account.introOnOpen')}
+              <span className="small muted" style={{ display: 'block' }}>
+                {t('account.introOnOpenHint')}
+              </span>
+            </span>
+          </label>
         </section>
 
         <form className="card form" onSubmit={submit}>

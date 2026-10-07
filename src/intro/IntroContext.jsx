@@ -1,15 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import IntroOverlay from './IntroOverlay.jsx';
 
-// Plays the intro once per browser session (replayable from the footer).
-// Later page loads get a short shutter transition instead.
+// The intro is off by default: it plays from Settings ("Ver la intro"), or on
+// opening the site if the person turns that on in Settings (saved per device,
+// once per browser session). Otherwise page loads get a short shutter
+// transition.
 
-const KEY = 'aclub.intro';
-const IntroContext = createContext({ done: true, replay: () => {} });
+const SEEN_KEY = 'aclub.intro';
+const AUTOPLAY_KEY = 'aclub.introOnOpen';
+const IntroContext = createContext({ done: true, replay: () => {}, autoplay: false, setAutoplay: () => {} });
 
 function seen() {
   try {
-    return sessionStorage.getItem(KEY) === 'seen';
+    return sessionStorage.getItem(SEEN_KEY) === 'seen';
   } catch {
     return false;
   }
@@ -17,23 +20,41 @@ function seen() {
 
 function markSeen() {
   try {
-    sessionStorage.setItem(KEY, 'seen');
+    sessionStorage.setItem(SEEN_KEY, 'seen');
   } catch {
-    /* private mode: the intro just plays again next time */
+    /* private mode: nothing to remember */
+  }
+}
+
+function readAutoplay() {
+  try {
+    return localStorage.getItem(AUTOPLAY_KEY) === 'on';
+  } catch {
+    return false;
   }
 }
 
 export function IntroProvider({ children }) {
-  const [state, setState] = useState(() => (seen() ? 'curtain' : 'intro'));
+  const [autoplay, setAutoplayState] = useState(readAutoplay);
+  const [state, setState] = useState(() => (autoplay && !seen() ? 'intro' : 'curtain'));
   const finishIntro = useCallback(() => {
     markSeen();
     setState('done');
   }, []);
   const finishCurtain = useCallback(() => setState('done'), []);
   const replay = useCallback(() => setState('intro'), []);
+  const setAutoplay = useCallback((on) => {
+    setAutoplayState(on);
+    try {
+      if (on) localStorage.setItem(AUTOPLAY_KEY, 'on');
+      else localStorage.removeItem(AUTOPLAY_KEY);
+    } catch {
+      /* storage blocked: the choice lasts until the page is closed */
+    }
+  }, []);
 
   return (
-    <IntroContext.Provider value={{ done: state === 'done', replay }}>
+    <IntroContext.Provider value={{ done: state === 'done', replay, autoplay, setAutoplay }}>
       {children}
       {state === 'intro' && <IntroOverlay onDone={finishIntro} />}
       {state === 'curtain' && <Curtain onDone={finishCurtain} />}
