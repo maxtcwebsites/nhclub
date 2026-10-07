@@ -1,0 +1,578 @@
+rules_version = '2';
+
+// =============================================================================
+//  Northhill Kids Club - Cloud Firestore security rules
+// =============================================================================
+//
+//  Roles
+//  -----
+//  * parent  - anyone who signs up. Can register children and edit their
+//              children's profile details. Can READ their own children's
+//              payments and attendance. Can never touch payment data.
+//  * teacher - a parent account that the super admin promoted. Sees every
+//              student, records payments/corrections, takes attendance and
+//              reads the audit logs.
+//  * super admin - the account whose VERIFIED email is r45t6er7@gmail.com.
+//              Everything a teacher can do, plus promoting/demoting teachers
+//              and changing the club settings.
+//
+//  Security principles applied
+//  ---------------------------
+//  * Deny by default. Every collection is listed explicitly, anything else
+//    is closed.
+//  * Every request (except creating / reading your own profile) needs a
+//    signed-in user with a VERIFIED email address.
+//  * Roles are never trusted from the client: the teacher role is read from
+//    /users/{uid}, which only the super admin can change. The super admin is
+//    recognised by the verified email inside the Firebase Auth token.
+//  * Strict schemas: every write must contain exactly the allowed fields,
+//    with the right types and size limits. Unknown fields are rejected.
+//  * Timestamps must be the server time (serverTimestamp()), so nobody can
+//    back-date or forge a record.
+//  * Money is stored in integer cents (no floating point drift).
+//  * The payment ledger and the audit log are APPEND-ONLY: no one can edit or
+//    delete a payment or a log entry from the app, not even the super admin.
+//  * Every change to a student must be committed together with a brand new
+//    audit-log entry written in the same batch (checked with getAfter()).
+//  * A student's paid-until date and totals can only move through a new
+//    ledger entry, and the totals must add up exactly (checked server side).
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------
+    //  Identity helpers
+    // ---------------------------------------------------------------------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function verified() {
+      return signedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email_verified == true;
+    }
+
+    function isSuperAdmin() {
+      return verified()
+        && request.auth.token.email.lower() == 'r45t6er7@gmail.com';
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function isTeacher() {
+      return verified()
+        && exists(userPath(request.auth.uid))
+        && get(userPath(request.auth.uid)).data.role == 'teacher';
+    }
+
+    function isStaff() {
+      return isSuperAdmin() || isTeacher();
+    }
+
+    // The role written into audit-log entries must be the caller's real role.
+    function callerRole() {
+      return isSuperAdmin() ? 'admin' : (isTeacher() ? 'teacher' : 'parent');
+    }
+
+    // ---------------------------------------------------------------------
+    //  Paths
+    // ---------------------------------------------------------------------
+
+    function studentPath(id) {
+      return /databases/$(database)/documents/students/$(id);
+    }
+
+    function paymentPath(id) {
+      return /databases/$(database)/documents/payments/$(id);
+    }
+
+    function logPath(id) {
+      return /databases/$(database)/documents/logs/$(id);
+    }
+
+    function settingsPath() {
+      return /databases/$(database)/documents/settings/club;
+    }
+
+    // ---------------------------------------------------------------------
+    //  Validation helpers
+    // ---------------------------------------------------------------------
+
+    function isStr(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+
+    function isDate(v) {
+      return v is string
+        && v.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$');
+    }
+
+    // 'YYYY-MM-DD' -> timestamp (midnight UTC), for date arithmetic.
+    function dayOf(s) {
+      return timestamp.date(int(s[0:4]), int(s[5:7]), int(s[8:10]));
+    }
+
+    function isIntBetween(v, min, max) {
+      return v is int && v >= min && v <= max;
+    }
+
+    // Firestore auto-generated document ids.
+    function isDocId(v) {
+      return v is string && v.matches('^[A-Za-z0-9]{15,40}$');
+    }
+
+    // Firebase Auth uids.
+    function isUid(v) {
+      return v is string && v.matches('^[A-Za-z0-9_-]{1,128}$');
+    }
+
+    // A log entry that is being created in this very batch, by this user.
+    function isFreshLog(logId) {
+      return isDocId(logId)
+        && !exists(logPath(logId))
+        && getAfter(logPath(logId)).data.actorUid == request.auth.uid;
+    }
+
+    // =====================================================================
+    //  /settings/club  - club-wide settings, only the super admin edits them
+    // =====================================================================
+    match /settings/{settingsId} {
+
+      function validSettings() {
+        let d = request.resource.data;
+        let keys = ['clubName', 'currency', 'monthlyFeeCents', 'absencePolicy',
+                    'expiringSoonDays', 'clubDays', 'updatedBy', 'updatedAt',
+                    'lastLogId'];
+        return d.keys().hasOnly(keys)
+          && d.keys().hasAll(keys)
+          && isStr(d.clubName, 1, 80)
+          && isStr(d.currency, 1, 5)
+          && isIntBetween(d.monthlyFeeCents, 0, 10000000)
+          // 'charge'  = absences are still paid for (default)
+          // 'excused' = excused absences extend the subscription by a day
+          // 'all'     = every absence extends the subscription by a day
+          && d.absencePolicy in ['charge', 'excused', 'all']
+          && isIntBetween(d.expiringSoonDays, 1, 60)
+          && d.clubDays is list
+          && d.clubDays.size() <= 7
+          && d.clubDays.hasOnly([0, 1, 2, 3, 4, 5, 6])
+          && d.updatedBy == request.auth.uid
+          && d.updatedAt == request.time
+          && (resource == null || d.lastLogId != resource.data.lastLogId)
+          && isFreshLog(d.lastLogId)
+          && getAfter(logPath(d.lastLogId)).data.type == 'settings_updated';
+      }
+
+      allow get: if verified() && settingsId == 'club';
+      allow list: if false;
+      allow create, update: if isSuperAdmin()
+        && settingsId == 'club'
+        && validSettings();
+      allow delete: if false;
+    }
+
+    // =====================================================================
+    //  /users/{uid}  - one profile per account, holds the role
+    // =====================================================================
+    match /users/{uid} {
+
+      function ownerCreate() {
+        let d = request.resource.data;
+        let keys = ['uid', 'email', 'displayName', 'phone', 'role',
+                    'createdAt', 'updatedAt'];
+        return request.auth.uid == uid
+          && d.keys().hasOnly(keys)
+          && d.keys().hasAll(keys)
+          && d.uid == uid
+          && d.email == request.auth.token.email
+          && isStr(d.displayName, 1, 80)
+          && isStr(d.phone, 0, 30)
+          // Everybody starts as a parent. Nobody can make themselves staff.
+          && d.role == 'parent'
+          && d.createdAt == request.time
+          && d.updatedAt == request.time;
+      }
+
+      function allUserKeys() {
+        return ['uid', 'email', 'displayName', 'phone', 'role', 'createdAt',
+                'updatedAt', 'roleUpdatedBy', 'roleUpdatedAt', 'roleLogId'];
+      }
+
+      // The owner can only change their name / phone (and keep their email
+      // in sync with Firebase Auth). The role field is untouchable.
+      function ownerUpdate() {
+        let d = request.resource.data;
+        return request.auth.uid == uid
+          && d.diff(resource.data).affectedKeys()
+               .hasOnly(['displayName', 'phone', 'email', 'updatedAt'])
+          && isStr(d.displayName, 1, 80)
+          && isStr(d.phone, 0, 30)
+          && d.email == request.auth.token.email
+          && d.updatedAt == request.time;
+      }
+
+      // Only the super admin can promote a parent to teacher (or demote).
+      // The change must be logged in the same batch.
+      function superAdminRoleUpdate() {
+        let d = request.resource.data;
+        return isSuperAdmin()
+          && d.diff(resource.data).affectedKeys()
+               .hasOnly(['role', 'roleUpdatedBy', 'roleUpdatedAt', 'updatedAt', 'roleLogId'])
+          && d.role in ['parent', 'teacher']
+          && d.roleUpdatedBy == request.auth.uid
+          && d.roleUpdatedAt == request.time
+          && d.updatedAt == request.time
+          && d.roleLogId != resource.data.get('roleLogId', null)
+          && isFreshLog(d.roleLogId)
+          && getAfter(logPath(d.roleLogId)).data.targetUid == uid;
+      }
+
+      allow get: if signedIn() && (request.auth.uid == uid || isStaff());
+      allow list: if isStaff();
+      allow create: if signedIn() && ownerCreate();
+      allow update: if signedIn()
+        && request.resource.data.keys().hasOnly(allUserKeys())
+        && (ownerUpdate() || superAdminRoleUpdate());
+      allow delete: if false;
+    }
+
+    // =====================================================================
+    //  /students/{studentId}
+    // =====================================================================
+    match /students/{studentId} {
+
+      // Fields the parent fills in.
+      function profileKeys() {
+        return ['firstName', 'lastName', 'dateOfBirth', 'grade', 'allergies',
+                'medicalNotes', 'emergencyName', 'emergencyPhone',
+                'authorizedPickup'];
+      }
+
+      // Fields managed by the system / staff.
+      function systemKeys() {
+        return ['parentUid', 'status', 'paidUntil', 'totalPaidCents',
+                'monthsPaid', 'creditDays', 'lastPaymentAt', 'lastPaymentId',
+                'lastAttendanceId', 'lastLogId', 'createdBy', 'createdAt',
+                'updatedAt'];
+      }
+
+      function validProfile(d) {
+        return isStr(d.firstName, 1, 50)
+          && isStr(d.lastName, 1, 50)
+          && isDate(d.dateOfBirth)
+          && isStr(d.grade, 0, 30)
+          && isStr(d.allergies, 0, 500)
+          && isStr(d.medicalNotes, 0, 1000)
+          && isStr(d.emergencyName, 1, 80)
+          && isStr(d.emergencyPhone, 3, 30)
+          && isStr(d.authorizedPickup, 0, 500);
+      }
+
+      // The new lastLogId must point to a log entry about THIS student that
+      // is created in the same batch.
+      function loggedChange(d) {
+        return isFreshLog(d.lastLogId)
+          && getAfter(logPath(d.lastLogId)).data.studentId == studentId;
+      }
+
+      // Only a parent can register a child, and only for themselves.
+      // All billing fields start empty - a parent can never mark anything paid.
+      function validCreate() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(profileKeys().concat(systemKeys()))
+          && d.keys().hasAll(profileKeys().concat(systemKeys()))
+          && validProfile(d)
+          && d.parentUid == request.auth.uid
+          && d.createdBy == request.auth.uid
+          && d.status == 'active'
+          && d.paidUntil == null
+          && d.totalPaidCents == 0
+          && d.monthsPaid == 0
+          && d.creditDays == 0
+          && d.lastPaymentAt == null
+          && d.lastPaymentId == null
+          && d.lastAttendanceId == null
+          && d.createdAt == request.time
+          && d.updatedAt == request.time
+          && loggedChange(d);
+      }
+
+      // Parents may only edit the profile fields of their own children.
+      function parentUpdate() {
+        return resource.data.parentUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(profileKeys().concat(['updatedAt', 'lastLogId']));
+      }
+
+      // A new ledger entry (payment or correction) written in this batch.
+      // The paid-until date must equal the entry's period end and the totals
+      // must add up exactly.
+      function paymentApplied(before, after) {
+        return isDocId(after.lastPaymentId)
+          && after.lastPaymentId != before.lastPaymentId
+          && !exists(paymentPath(after.lastPaymentId))
+          && ledgerMatches(before, after, getAfter(paymentPath(after.lastPaymentId)).data);
+      }
+
+      function ledgerMatches(before, after, p) {
+        return p.studentId == studentId
+          && after.paidUntil == p.periodEnd
+          && after.totalPaidCents == before.totalPaidCents + p.amountCents
+          && after.monthsPaid == before.monthsPaid + p.months
+          && after.lastPaymentAt == request.time
+          // Absence credit is folded into the new paid-until date.
+          && after.creditDays == 0;
+      }
+
+      function attendancePath(id) {
+        return /databases/$(database)/documents/attendance/$(id);
+      }
+
+      // Absence credit only moves when the credited flag of one of THIS
+      // student's attendance records flips in the same batch.
+      function creditMatchesAttendance(before, after) {
+        return after.lastAttendanceId is string
+          && after.lastAttendanceId.matches(studentId + '_[0-9]{4}-[0-9]{2}-[0-9]{2}')
+          && creditFlipMatches(
+               after.creditDays - before.creditDays,
+               exists(attendancePath(after.lastAttendanceId))
+                 && get(attendancePath(after.lastAttendanceId)).data.credited == true,
+               getAfter(attendancePath(after.lastAttendanceId)),
+               after.lastLogId);
+      }
+
+      function creditFlipMatches(delta, wasCredited, attendanceAfter, logId) {
+        return (attendanceAfter == null
+                  // Deleted in this batch: only allowed if it existed.
+                  ? (wasCredited ? -1 : 0) == delta
+                  : attendanceAfter.data.logId == logId
+                    && (attendanceAfter.data.credited == true ? 1 : 0)
+                         - (wasCredited ? 1 : 0) == delta);
+      }
+
+      function staffUpdate() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let changed = after.diff(before).affectedKeys();
+        let billingKeys = ['paidUntil', 'totalPaidCents', 'monthsPaid',
+                           'lastPaymentAt', 'lastPaymentId'];
+        return isStaff()
+          && changed.hasOnly(profileKeys().concat(billingKeys).concat(
+               ['status', 'creditDays', 'lastAttendanceId', 'updatedAt', 'lastLogId']))
+          && after.status in ['active', 'archived']
+          && isIntBetween(after.creditDays, -3660, 3660)
+          // Billing fields only move together with a brand new ledger entry.
+          && (changed.hasAny(billingKeys)
+                ? paymentApplied(before, after)
+                : (after.creditDays == before.creditDays
+                   || creditMatchesAttendance(before, after)));
+      }
+
+      allow get, list: if verified()
+        && (isStaff() || resource.data.parentUid == request.auth.uid);
+
+      allow create: if verified() && validCreate();
+
+      allow update: if verified()
+        && request.resource.data.keys().hasOnly(profileKeys().concat(systemKeys()))
+        && validProfile(request.resource.data)
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.lastLogId != resource.data.lastLogId
+        && loggedChange(request.resource.data)
+        && (parentUpdate() || staffUpdate());
+
+      // Students are archived, never deleted (keeps the ledger consistent).
+      allow delete: if false;
+    }
+
+    // =====================================================================
+    //  /payments/{paymentId}  - append-only ledger
+    // =====================================================================
+    match /payments/{paymentId} {
+
+      function validEntry(d, student) {
+        let keys = ['studentId', 'parentUid', 'kind', 'amountCents', 'months',
+                    'method', 'currency', 'periodStart', 'periodEnd',
+                    'previousPaidUntil', 'previousCreditDays', 'note',
+                    'createdBy', 'createdByName', 'createdAt'];
+        return d.keys().hasOnly(keys)
+          && d.keys().hasAll(keys)
+          && d.parentUid == student.parentUid
+          && d.previousPaidUntil == student.paidUntil
+          && d.previousCreditDays == student.creditDays
+          && isDate(d.periodEnd)
+          && isStr(d.currency, 1, 5)
+          && isStr(d.note, 0, 500)
+          && d.createdBy == request.auth.uid
+          && isStr(d.createdByName, 0, 80)
+          && d.createdAt == request.time
+          && (
+            // A real payment: positive amount, at least one month.
+            (d.kind == 'payment'
+              && isIntBetween(d.amountCents, 1, 10000000)
+              && isIntBetween(d.months, 1, 24)
+              && d.method in ['cash', 'card', 'bank_transfer', 'other']
+              && isDate(d.periodStart)
+              // The covered period must match the number of months paid.
+              && dayOf(d.periodEnd) - dayOf(d.periodStart)
+                   >= duration.value(d.months * 28 - 1, 'd')
+              && dayOf(d.periodEnd) - dayOf(d.periodStart)
+                   <= duration.value(d.months * 31, 'd'))
+            ||
+            // A correction / refund: must explain why.
+            (d.kind == 'correction'
+              && isIntBetween(d.amountCents, -10000000, 10000000)
+              && isIntBetween(d.months, -24, 24)
+              && d.method == 'adjustment'
+              && d.periodStart == null
+              && isStr(d.note, 3, 500))
+          );
+      }
+
+      allow get, list: if verified()
+        && (isStaff() || resource.data.parentUid == request.auth.uid);
+
+      allow create: if isStaff()
+        && isDocId(paymentId)
+        && isDocId(request.resource.data.studentId)
+        && exists(studentPath(request.resource.data.studentId))
+        // The student document must be updated to point at this entry.
+        && getAfter(studentPath(request.resource.data.studentId)).data.lastPaymentId == paymentId
+        && validEntry(request.resource.data,
+                      get(studentPath(request.resource.data.studentId)).data);
+
+      // Immutable. Mistakes are fixed with a new 'correction' entry.
+      allow update, delete: if false;
+    }
+
+    // =====================================================================
+    //  /attendance/{studentId_date}
+    // =====================================================================
+    match /attendance/{attendanceId} {
+
+      function creditAllowed(status) {
+        return exists(settingsPath())
+          && ((status == 'absent' && get(settingsPath()).data.absencePolicy == 'all')
+              || (status == 'excused'
+                  && get(settingsPath()).data.absencePolicy in ['excused', 'all']));
+      }
+
+      function validWrite(d, before, after) {
+        let keys = ['studentId', 'parentUid', 'date', 'status', 'note',
+                    'credited', 'logId', 'updatedBy', 'updatedByName', 'updatedAt'];
+        let wasCredited = resource != null && resource.data.credited == true;
+        let nowCredited = d.credited == true;
+        return d.keys().hasOnly(keys)
+          && d.keys().hasAll(keys)
+          && d.parentUid == before.parentUid
+          && d.status in ['present', 'absent', 'excused']
+          && isStr(d.note, 0, 300)
+          && d.credited is bool
+          // A present day can never carry an absence credit.
+          && (!nowCredited || d.status != 'present')
+          // New credits must be allowed by the club's absence policy.
+          && (wasCredited || !nowCredited || creditAllowed(d.status))
+          // The student's credit counter must move by exactly the same amount.
+          && after.creditDays - before.creditDays
+               == (nowCredited ? 1 : 0) - (wasCredited ? 1 : 0)
+          // Must be logged: the student doc points to the fresh log entry.
+          && d.logId == after.lastLogId
+          && d.logId != before.lastLogId
+          && d.updatedBy == request.auth.uid
+          && isStr(d.updatedByName, 0, 80)
+          && d.updatedAt == request.time;
+      }
+
+      function validDelete(d, before, after) {
+        return after.lastLogId != before.lastLogId
+          && after.creditDays - before.creditDays == (d.credited == true ? -1 : 0);
+      }
+
+      allow get, list: if verified()
+        && (isStaff() || resource.data.parentUid == request.auth.uid);
+
+      allow create, update: if isStaff()
+        && isDocId(request.resource.data.studentId)
+        && isDate(request.resource.data.date)
+        && attendanceId == request.resource.data.studentId + '_' + request.resource.data.date
+        && exists(studentPath(request.resource.data.studentId))
+        && validWrite(request.resource.data,
+                      get(studentPath(request.resource.data.studentId)).data,
+                      getAfter(studentPath(request.resource.data.studentId)).data);
+
+      allow delete: if isStaff()
+        && validDelete(resource.data,
+                       get(studentPath(resource.data.studentId)).data,
+                       getAfter(studentPath(resource.data.studentId)).data);
+    }
+
+    // =====================================================================
+    //  /logs/{logId}  - append-only audit trail
+    // =====================================================================
+    match /logs/{logId} {
+
+      function studentLog(d) {
+        return d.type in ['student_created', 'student_updated', 'status_changed',
+                          'payment', 'correction', 'attendance',
+                          'attendance_cleared']
+          && isDocId(d.studentId)
+          && d.targetUid == null
+          && studentLogAllowed(d, getAfter(studentPath(d.studentId)).data);
+      }
+
+      function studentLogAllowed(d, student) {
+        return student.lastLogId == logId
+          && (isStaff()
+              || (student.parentUid == request.auth.uid
+                  && d.type in ['student_created', 'student_updated']));
+      }
+
+      function roleLog(d) {
+        return d.type == 'role_changed'
+          && isSuperAdmin()
+          && d.studentId == null
+          && isUid(d.targetUid)
+          && getAfter(userPath(d.targetUid)).data.roleLogId == logId;
+      }
+
+      function settingsLog(d) {
+        return d.type == 'settings_updated'
+          && isSuperAdmin()
+          && d.studentId == null
+          && d.targetUid == null
+          && getAfter(settingsPath()).data.lastLogId == logId;
+      }
+
+      function validLog() {
+        let d = request.resource.data;
+        let keys = ['type', 'studentId', 'targetUid', 'message', 'actorUid',
+                    'actorName', 'actorRole', 'createdAt'];
+        return d.keys().hasOnly(keys)
+          && d.keys().hasAll(keys)
+          && isStr(d.message, 1, 500)
+          && d.actorUid == request.auth.uid
+          && isStr(d.actorName, 0, 80)
+          && d.actorRole == callerRole()
+          && d.createdAt == request.time
+          && (studentLog(d) || roleLog(d) || settingsLog(d));
+      }
+
+      allow get, list: if isStaff();
+      allow create: if verified() && isDocId(logId) && validLog();
+      // Nobody can rewrite history.
+      allow update, delete: if false;
+    }
+
+    // =====================================================================
+    //  Everything else is closed.
+    // =====================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
